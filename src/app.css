@@ -1,0 +1,65 @@
+:root {
+  --font-1: 'JetBrains Mono', ui-monospace, monospace;
+}
+.theme-light { --bg-1: #fafafa; --bg-2: #fff; --bg-3: #f0f0f0; --text-1: #1a1a1a; --text-2: #404040; --text-3: #b0b0b0; --accent: #1a73e8; --border: #e0e0e0; --code-bg: #f5f5f5; }
+.theme-nord { --bg-1: #2e3440; --bg-2: #3b4452; --bg-3: #434c5e; --text-1: #eceff4; --text-2: #d8dee9; --text-3: #4c566a; --accent: #81a1c1; --border: #4c566a; --code-bg: #434c5e; }
+.theme-dark { --bg-1: #0d0d0d; --bg-2: #1a1a1a; --bg-3: #262626; --text-1: #f0f0f0; --text-2: #ccc; --text-3: #404040; --accent: #4a9eff; --border: #333; --code-bg: #1f1f1f; }
+.theme-oled { --bg-1: #000; --bg-2: #0a0a0a; --bg-3: #141414; --text-1: #f0f0f0; --text-2: #c0c0c0; --text-3: #2a2a2a; --accent: #00d4aa; --border: #1a1a1a; --code-bg: #0d0d0d; }
+.theme-sepia { --bg-1: #f4ecd8; --bg-2: #faf3e0; --bg-3: #f0e6d2; --text-1: #4b3420; --text-2: #5c4a30; --text-3: #c9b99a; --accent: #704214; --border: #d4c4a0; --code-bg: #e8dcc4; }
+.theme-taiga { --bg-1: #1a1c1f; --bg-2: #2a2d34; --bg-3: #3a3e47; --text-1: #e0e0e0; --text-2: #a0a0a0; --text-3: #404048; --accent: #ff6b35; --border: #3a3e47; --code-bg: #24282e; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-1); color: var(--text-1); font-family: var(--font-1); -webkit-font-smoothing: antialiased; }
+::selection { background: #bae6fd; }
+::-webkit-scrollbar { width: 0; height: 0; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+.wrap { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 3.5rem; display: flex; flex-direction: column; align-items: center; padding: 0.75rem 0; background: var(--bg-2); border-right: 1px solid var(--border); }
+.sidebar-sep { margin-bottom: 1.5rem; }
+.sidebar-icon { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.375rem; border: none; background: transparent; color: var(--text-3); cursor: pointer; transition: background 0.15s, color 0.15s; margin-bottom: 0.25rem; position: relative; }
+.sidebar-icon:hover { background: var(--bg-3); color: var(--text-1); }
+.sidebar-icon svg { width: 1.125rem; height: 1.125rem; }
+.sidebar-icon .tooltip { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap; background: #1f1f1f; color: white; border-radius: 0.25rem; z-index: 100; }
+.sidebar-icon:hover .tooltip { display: block; }
+.sidebar-icon .kbd { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.5rem; padding: 0.125rem 0.375rem; font-size: 0.625rem; white-space: nowrap; background: #374151; color: #d1d5db; border-radius: 0.25rem; z-index: 100; }
+.sidebar-icon:hover .kbd { display: block; }
+.sidebar-footer { margin-top: auto; font-size: 0.625rem; color: var(--text-3); text-align: center; }
+.editor-area { margin-left: 3.5rem; height: 100vh; overflow-y: auto; }
+.notion-editor { width: 100%; min-height: 100%; padding: 3rem 3rem 10rem; font-size: 1rem; line-height: 1.75; caret-color: var(--accent); outline: none; white-space: pre-wrap; word-wrap: break-word; }
+.notion-editor:empty::before { content: attr(data-placeholder); color: var(--text-3); pointer-events: none; }
+.notion-editor h1 { font-size: 2.25rem; font-weight: 700; margin: 1.5rem 0 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+.notion-editor h2 { font-size: 1.875rem; font-weight: 700; margin: 1.25rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+.notion-editor h3 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.notion-editor p { margin-bottom: 0.75rem; }
+.notion-editor ul, .notion-editor ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+.notion-editor li { margin-bottom: 0.25rem; }
+.notion-editor blockquote { border-left: 2px solid var(--accent); padding-left: 1rem; margin: 0.75rem 0; font-style: italic; }
+.notion-editor code { font-family: var(--font-1); font-size: 0.875rem; border-radius: 0.25rem; padding: 0.125rem 0.25rem; background: var(--code-bg); }
+.notion-editor pre { border-radius: 0.5rem; padding: 1rem; margin: 1rem 0; background: var(--bg-3); border: 1px solid var(--border); overflow-x: auto; }
+.notion-editor pre code { padding: 0; background: none; }
+.notion-editor hr { margin: 1.5rem 0; border: none; border-top: 1px solid var(--border); }
+.notion-editor table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+.notion-editor th, .notion-editor td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); }
+.notion-editor th { font-weight: 700; background: var(--bg-3); }
+.notion-editor a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.notion-editor strong { font-weight: 700; }
+.notion-editor em { font-style: italic; }
+.statusbar { position: fixed; bottom: 0; right: 0; padding: 0.375rem 0.75rem; font-size: 0.6875rem; color: var(--text-3); background: var(--bg-2); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.statusbar span { margin-left: 1rem; }
+.spin { width: 0.75rem; height: 0.75rem; animation: spin 1s linear infinite; color: var(--accent); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.popup { position: fixed; z-index: 1000; }
+.popup-backdrop { position: fixed; inset: 0; z-index: 999; }
+.popup-inner { position: absolute; width: 16rem; background: var(--bg-2); border: 1px solid var(--border); border-radius: 0.5rem; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 0.
+5rem; z-index: 1001; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.popup-item { width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.375rem 0.5rem; border-radius: 0.375rem; font-size: 0.8125rem; border: none; background: transparent; color: var(--text-1); cursor: pointer; text-align: left; }
+.popup-item:hover { background: var(--bg-3); }
+.popup-item svg { width: 1rem; height: 1rem; color: var(--text-2); }
+.popup-item .kbd-hint { margin-left: auto; font-size: 0.625rem; color: var(--text-3); }
+.theme-swatch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.25rem; margin-top: 0.25rem; }
+.theme-swatch-btn { width: 100%; aspect-ratio: 1; border-radius: 0.375rem; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; }
+.theme-swatch-btn.active { border-color: var(--accent); }
+.theme-swatch-btn:hover:not(.active) { border-color: var(--border); }
+.export-list { display: flex; flex-direction: column; gap: 0.125rem; }
+.export-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.5rem; border-radius: 0.375rem; font-size: 0.8125rem; color: var(--text-1); background: transparent; border: none; cursor: pointer; text-align: left; width: 100%; }
+.export-item:hover { background: var(--bg-3); }
+.export-item svg { width: 0.875rem; height: 0.875rem; color: var(--text-2); }

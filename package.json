@@ -1,0 +1,23 @@
+{
+  "name": "notes",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@iconify/svelte": "^5.2.1",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@unocss/preset-mini": "^66.6.8",
+    "autoprefixer": "^10.5.0",
+    "lucide-svelte": "^1.0.1",
+    "postcss": "^8.5.12",
+    "svelte": "^5.55.4",
+    "svelte-preprocess": "^6.0.3",
+    "unocss": "^66.6.8",
+    "vite": "^8.0.10"
+  }
+}
