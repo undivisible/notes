@@ -11,6 +11,9 @@ export function markdownToHtml(markdown) {
     return `<pre${langAttr}><code${langClass}>${code}</code></pre>`
   })
 
+  // Strikethrough
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>')
+
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
 
@@ -62,6 +65,7 @@ export function markdownToHtml(markdown) {
       let p = trimmed
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.+?)__/g,     '<strong>$1</strong>')
+        .replace(/~~(.+?)~~/g,     '<del>$1</del>')
         .replace(/\*(.+?)\*/g,     '<em>$1</em>')
         .replace(/_(.+?)_/g,       '<em>$1</em>')
         .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>')
@@ -99,6 +103,7 @@ function nodeToMd(node) {
     case 'br': return '\n'
     case 'strong': case 'b': { const t = text(); return t ? `**${t}**` : '' }
     case 'em':     case 'i': { const t = text(); return t ? `*${t}*` : '' }
+    case 'del': case 's': case 'strike': { const t = text(); return t ? `~~${t}~~` : '' }
     case 'h1': return `# ${text()}\n`
     case 'h2': return `## ${text()}\n`
     case 'h3': return `### ${text()}\n`

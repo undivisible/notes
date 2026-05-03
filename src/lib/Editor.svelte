@@ -67,19 +67,24 @@
   let slashBlock = null
 
   const slashCommands = [
-    { id:'h1',   label:'Heading 1',    hint:'Large section heading',   icon:'H1',  tag:'h1' },
-    { id:'h2',   label:'Heading 2',    hint:'Medium section heading',  icon:'H2',  tag:'h2' },
-    { id:'h3',   label:'Heading 3',    hint:'Small section heading',   icon:'H3',  tag:'h3' },
-    { id:'ul',   label:'Bullet List',  hint:'Unordered list',          icon:'•',   action:'ul' },
-    { id:'ol',   label:'Numbered List',hint:'Ordered list',            icon:'1.',  action:'ol' },
-    { id:'code', label:'Code Block',   hint:'Syntax highlighted code', icon:'</>',action:'code' },
-    { id:'quote',label:'Quote',        hint:'Block quotation',         icon:'"',  tag:'blockquote' },
-    { id:'hr',   label:'Divider',      hint:'Horizontal separator',    icon:'—',   action:'hr' },
+    { id:'h1',   label:'Heading 1',    hint:'Large section heading',   icon:'H1',  tag:'h1',        aliases:['h1','heading1','heading','title','#'] },
+    { id:'h2',   label:'Heading 2',    hint:'Medium section heading',  icon:'H2',  tag:'h2',        aliases:['h2','heading2','subtitle','##'] },
+    { id:'h3',   label:'Heading 3',    hint:'Small section heading',   icon:'H3',  tag:'h3',        aliases:['h3','heading3','###'] },
+    { id:'ul',   label:'Bullet List',  hint:'Unordered list',          icon:'•',   action:'ul',     aliases:['ul','bullet','list','-','*'] },
+    { id:'ol',   label:'Numbered List',hint:'Ordered list',            icon:'1.',  action:'ol',     aliases:['ol','numbered','number','ordered'] },
+    { id:'code', label:'Code Block',   hint:'Syntax highlighted code', icon:'</>',action:'code',    aliases:['code','pre','snippet','```','codeblock'] },
+    { id:'quote',label:'Quote',        hint:'Block quotation',         icon:'"',  tag:'blockquote', aliases:['quote','blockquote','>','citation'] },
+    { id:'hr',   label:'Divider',      hint:'Horizontal separator',    icon:'—',   action:'hr',     aliases:['hr','divider','---','rule','line','separator'] },
   ]
 
   let filteredCmds = $derived(
     slashQuery.trim()
-      ? slashCommands.filter(c => c.label.toLowerCase().includes(slashQuery.toLowerCase()))
+      ? slashCommands.filter(c => {
+          const q = slashQuery.toLowerCase()
+          return c.label.toLowerCase().includes(q)
+            || c.id.includes(q)
+            || c.aliases?.some(a => a.includes(q))
+        })
       : slashCommands
   )
 
@@ -315,6 +320,14 @@
       _inlineSkip = false
       syncContent(); return
     }
+    // ~~strikethrough~~
+    const strikeM = text.match(/~~([^~\n]+)~~$/)
+    if (strikeM) {
+      _inlineSkip = true
+      applyInlineFormat(node, offset - strikeM[0].length, offset, 'del', strikeM[1])
+      _inlineSkip = false
+      syncContent(); return
+    }
   }
 
   // ── Floating selection toolbar ──
@@ -341,8 +354,9 @@
     showSelBar = true
   }
 
-  function selBarBold()   { document.execCommand('bold');   syncContent() }
-  function selBarItalic() { document.execCommand('italic'); syncContent() }
+  function selBarBold()   { document.execCommand('bold');          syncContent() }
+  function selBarItalic() { document.execCommand('italic');        syncContent() }
+  function selBarStrike() { document.execCommand('strikeThrough'); syncContent() }
   function selBarCode() {
     const sel = window.getSelection()
     if (!sel?.rangeCount) return
@@ -530,8 +544,20 @@
         syncContent(); return
       }
 
-      // Detect ``` or ```lang at start of block → create code block
+      // Detect --- → divider
       const block = getContainingBlock(startNode)
+      if (block && block.textContent.trim() === '---') {
+        e.preventDefault()
+        const hr = document.createElement('hr')
+        const p = document.createElement('p'); p.innerHTML = '<br>'
+        block.replaceWith(hr); hr.after(p)
+        const r = document.createRange()
+        r.setStart(p, 0); r.collapse(true)
+        sel.removeAllRanges(); sel.addRange(r)
+        syncContent(); return
+      }
+
+      // Detect ``` or ```lang at start of block → create code block
       if (block) {
         const blockText = block.textContent.trim()
         const m = blockText.match(/^```(\w*)$/)
@@ -931,8 +957,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
   {:else}
-    <button class="sel-btn" onclick={selBarBold}     title="Bold"><b>B</b></button>
+    <button class="sel-btn"            onclick={selBarBold}     title="Bold"><b>B</b></button>
     <button class="sel-btn sel-italic" onclick={selBarItalic}   title="Italic"><i>I</i></button>
+    <button class="sel-btn sel-strike" onclick={selBarStrike}   title="Strikethrough"><s>S</s></button>
     <button class="sel-btn sel-mono"   onclick={selBarCode}     title="Inline code">{'<>'}</button>
     <div class="sel-divider"></div>
     <button class="sel-btn" onclick={selBarOpenLink} title="Link">
