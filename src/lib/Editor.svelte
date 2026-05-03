@@ -280,16 +280,44 @@
 
       if (tag) {
         e.preventDefault()
-        startNode.textContent = startNode.textContent.slice(before.length)
-        range.setStart(startNode, 0); range.collapse(true)
-        document.execCommand('formatBlock', false, tag)
+        // Remaining text after the trigger prefix
+        const remaining = startNode.textContent.slice(before.length + range.startOffset - before.length) || ''
+        const newEl = document.createElement(tag)
+        if (remaining) newEl.textContent = remaining
+        else newEl.innerHTML = '<br>'
+
+        const block = getContainingBlock(startNode)
+        if (block) {
+          block.replaceWith(newEl)
+        } else if (startNode.parentElement === editorEl) {
+          // Text is directly inside the editor div — wrap it
+          startNode.replaceWith(newEl)
+        } else {
+          editorEl.insertBefore(newEl, startNode.parentElement)
+          startNode.parentElement?.remove()
+        }
+
+        const r = document.createRange()
+        const target = newEl.firstChild ?? newEl
+        r.setStart(target, 0); r.collapse(true)
+        sel.removeAllRanges(); sel.addRange(r)
         syncContent(); return
       }
+
       if (before === '-' || before === '*') {
         e.preventDefault()
-        startNode.textContent = startNode.textContent.slice(before.length)
-        range.setStart(startNode, 0); range.collapse(true)
-        document.execCommand('insertUnorderedList')
+        const ul = document.createElement('ul')
+        const li = document.createElement('li'); li.innerHTML = '<br>'
+        ul.appendChild(li)
+        const block = getContainingBlock(startNode)
+        if (block) {
+          block.replaceWith(ul)
+        } else if (startNode.parentElement === editorEl) {
+          startNode.replaceWith(ul)
+        }
+        const r = document.createRange()
+        r.setStart(li, 0); r.collapse(true)
+        sel.removeAllRanges(); sel.addRange(r)
         syncContent(); return
       }
     }
