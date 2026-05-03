@@ -21,25 +21,11 @@
   const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
   const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
-  // ── Google Fonts — full list fetched from Google's public metadata API ────
+  // ── Google Fonts — fetched via CORS-enabled Fontsource API, filtered to type=google ──
   let googleFontsList = $state([])
   let fontsLoading = $state(false)
   let fontsFetched = false
-
-  // Fonts already bundled via Fontsource in main.js — no CDN needed for these
-  const bundledFonts = new Set([
-    'Abril Fatface','Bebas Neue','Bitter','Caveat','Comfortaa',
-    'Cormorant Garamond','Cousine','Courier Prime','Crimson Pro',
-    'Dancing Script','DM Mono','DM Sans','EB Garamond','Fira Code',
-    'Figtree','IBM Plex Mono','Inconsolata','Instrument Sans','Instrument Serif',
-    'Inter','JetBrains Mono','Jost','Karla','Lato','Libre Baskerville',
-    'Lora','Manrope','Merriweather','Montserrat','Mulish',
-    'Nunito','Open Sans','Oswald','Outfit','Pacifico','Patrick Hand',
-    'Permanent Marker','Playfair Display','Plus Jakarta Sans','Poppins',
-    'Quicksand','Raleway','Righteous','Roboto','Roboto Mono',
-    'Source Code Pro','Source Serif 4','Space Grotesk','Space Mono','Work Sans',
-  ])
-  const loadedFonts = new Set(bundledFonts)
+  const loadedFonts = new Set()
 
   function loadFont(name) {
     if (loadedFonts.has(name)) return
@@ -54,16 +40,15 @@
     if (fontsFetched || fontsLoading) return
     fontsLoading = true
     try {
-      // api.fontsource.org is CORS-enabled and lists all 2000+ Google Fonts
       const res = await fetch('https://api.fontsource.org/v1/fonts')
       const json = await res.json()
       googleFontsList = (Array.isArray(json) ? json : Object.values(json))
+        .filter(f => f.type === 'google')
         .map(f => f.family).filter(Boolean)
         .sort((a, b) => a.localeCompare(b))
       fontsFetched = true
     } catch {
-      // Fallback to bundled list if offline
-      googleFontsList = [...bundledFonts].sort((a, b) => a.localeCompare(b))
+      googleFontsList = []
     }
     fontsLoading = false
   }
