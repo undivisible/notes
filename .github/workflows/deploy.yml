@@ -35,10 +35,7 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: pnpm build
-        env:
-          GITHUB_PAGES: true
-          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+        run: pnpm build --base=/${{ github.event.repository.name }}/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
