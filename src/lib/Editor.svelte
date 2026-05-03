@@ -18,8 +18,8 @@
   import 'prismjs/components/prism-c'
   import 'prismjs/components/prism-cpp'
 
-  const themes = ['light', 'dark', 'sepia', 'taiga']
-  const themeColors = { light: '#fafafa', dark: '#1c1c1e', sepia: '#f4ecd8', taiga: '#141f1a' }
+  const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
+  const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
   // Comprehensive Google Fonts list — grouped
   const googleFontsList = [
