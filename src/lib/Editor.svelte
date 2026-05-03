@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { markdownToHtml, htmlToMarkdown, download } from './markdownUtils'
+  import { localFonts } from './fonts.js'
   import Prism from 'prismjs'
   import 'prismjs/components/prism-markup'
   import 'prismjs/components/prism-css'
@@ -21,70 +22,10 @@
   const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
   const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
-  // Google Fonts list — fetched dynamically from Google's public metadata API
-  let googleFontsList = $state([])
-  let fontsMetaFetched = $state(false)
-  let fontsMetaLoading = $state(false)
-  const loadedFontNames = new Set()
-
-  function loadFont(name) {
-    if (loadedFontNames.has(name)) return
-    loadedFontNames.add(name)
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`
-    document.head.appendChild(link)
-  }
-
-  async function fetchFontList() {
-    if (fontsMetaFetched || fontsMetaLoading) return
-    fontsMetaLoading = true
-    try {
-      const res = await fetch('https://fonts.google.com/metadata/fonts')
-      const text = await res.text()
-      // Google prepends ")]}'" to the JSON for XSSI protection — strip it
-      const json = JSON.parse(text.replace(/^\)\]\}'\n/, ''))
-      googleFontsList = (json.familyMetadataList || [])
-        .map(f => f.family)
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b))
-      fontsMetaFetched = true
-    } catch(e) {
-      // Fallback: small curated list if fetch fails
-      googleFontsList = [
-        'Albert Sans','Alegreya','Amiri','Anton','Archivo','Arvo','Asap',
-        'Barlow','Be Vietnam Pro','Bebas Neue','Bitter','Bodoni Moda',
-        'Bricolage Grotesque','Cabin','Cairo','Cardo','Catamaran','Caveat',
-        'Chakra Petch','Chivo','Cinzel','Commissioner','Comfortaa',
-        'Cormorant','Cormorant Garamond','Courier Prime','Crimson Pro',
-        'DM Mono','DM Sans','DM Serif Display','DM Serif Text',
-        'Dancing Script','Darker Grotesque','Domine','Dosis',
-        'EB Garamond','Encode Sans','Epilogue','Exo','Exo 2',
-        'Familjen Grotesk','Figtree','Fira Code','Fira Mono','Fira Sans',
-        'Fragment Mono','Frank Ruhl Libre','Fraunces','Fredoka',
-        'Geist','Geist Mono','Gloria Hallelujah','Great Vibes',
-        'Hanken Grotesk','Heebo','Hind','IBM Plex Mono','IBM Plex Sans',
-        'Inconsolata','Indie Flower','Instrument Sans','Instrument Serif',
-        'Inter','JetBrains Mono','Josefin Sans','Jost','Kalam',
-        'Kanit','Karla','Kaushan Script','Lato','Lexend','Libre Baskerville',
-        'Libre Franklin','Literata','Lobster','Lora','Manrope',
-        'Martian Mono','Maven Pro','Merriweather','Montserrat','Mulish',
-        'Newsreader','Noto Sans','Noto Serif','Nunito','Nunito Sans',
-        'Onest','Open Sans','Outfit','Oxanium','Oxygen',
-        'PT Sans','PT Serif','Pacifico','Patrick Hand','Permanent Marker',
-        'Philosopher','Piazzolla','Playfair Display','Plus Jakarta Sans',
-        'Poppins','Poiret One','Prompt','Public Sans',
-        'Quicksand','Raleway','Readex Pro','Recursive','Red Hat Display',
-        'Red Hat Mono','Red Hat Text','Righteous','Roboto','Roboto Mono',
-        'Rubik','Sacramento','Satisfy','Signika','Slabo 27px',
-        'Sora','Source Code Pro','Source Sans 3','Source Serif 4',
-        'Space Grotesk','Space Mono','Spectral','Syne','Syne Mono',
-        'Titillium Web','Unbounded','Urbanist','Varela Round',
-        'Vollkorn','Work Sans','Ysabeau','Young Serif','Zilla Slab',
-      ].sort((a, b) => a.localeCompare(b))
-    }
-    fontsMetaLoading = false
-  }
+  // Locally bundled fonts via Fontsource (no CDN needed)
+  const googleFontsList = localFonts
+  let fontsMetaFetched = true
+  let fontsMetaLoading = false
 
   let editorEl = $state(null)
   let fontListEl = $state(null)
@@ -134,27 +75,9 @@
       : googleFontsList
   )
 
-  // IntersectionObserver — lazy-loads a font when its picker button scrolls into view
-  let fontObserver = null
-  function setupFontObserver() {
-    if (fontObserver) fontObserver.disconnect()
-    fontObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const name = entry.target.dataset.font
-          if (name) loadFont(name)
-        }
-      })
-    }, { root: fontListEl, rootMargin: '60px' })
-    fontListEl?.querySelectorAll('[data-font]').forEach(el => fontObserver.observe(el))
-  }
-
   onMount(() => {
-    // Load selected font at startup
     const savedFont = localStorage.getItem('notes-font') || currentFont
     currentFont = savedFont
-    const fontName = savedFont.replace(/'/g, '').split(',')[0].trim()
-    loadFont(fontName)
 
     const savedTheme = localStorage.getItem('notes-theme')
     if (savedTheme) { currentTheme = savedTheme; document.body.className = 'theme-' + savedTheme }
@@ -169,14 +92,6 @@
       scheduleHighlight()
     }
     updateCounts(saved)
-  })
-
-  // Re-attach observer whenever filtered list re-renders
-  $effect(() => {
-    if (!showFont || !fontListEl) return
-    const _dep = filteredFonts.length // track reactive dependency
-    // Wait one microtask for Svelte to flush DOM
-    Promise.resolve().then(setupFontObserver)
   })
 
   let saveTimeout
@@ -904,7 +819,7 @@
 
       <!-- Font -->
       <div class="popout-wrap">
-        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; if (!fontsMetaFetched) fetchFontList(); showTheme = false; showExport = false }} title="Font">
+        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; showTheme = false; showExport = false }} title="Font">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
           <span class="tooltip">{currentFontName()}</span>
         </button>
@@ -918,20 +833,16 @@
             onclick={(e) => e.stopPropagation()}
           />
           <div class="font-list" bind:this={fontListEl}>
-            {#if fontsMetaLoading}
-              <div class="font-empty">Loading fonts…</div>
-            {:else}
-              {#each filteredFonts as f}
-                <button
-                  class="font-item {currentFont.includes(f) ? 'active' : ''}"
-                  style={`font-family: "${f}", sans-serif`}
-                  onclick={() => selectFont(f)}
-                  data-font={f}
-                >{f}</button>
-              {/each}
-              {#if filteredFonts.length === 0}
-                <div class="font-empty">No fonts found</div>
-              {/if}
+            {#each filteredFonts as f}
+              <button
+                class="font-item {currentFont.includes(f) ? 'active' : ''}"
+                style={`font-family: "${f}", sans-serif`}
+                onclick={() => selectFont(f)}
+                data-font={f}
+              >{f}</button>
+            {/each}
+            {#if filteredFonts.length === 0}
+              <div class="font-empty">No fonts found</div>
             {/if}
           </div>
         </div>
