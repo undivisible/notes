@@ -21,8 +21,13 @@
   const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
   const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
-  // Locally bundled fonts via Fontsource — list must match imports in main.js
-  const googleFontsList = [
+  // ── Google Fonts — full list fetched from Google's public metadata API ────
+  let googleFontsList = $state([])
+  let fontsLoading = $state(false)
+  let fontsFetched = false
+
+  // Fonts already bundled via Fontsource in main.js — no CDN needed for these
+  const bundledFonts = new Set([
     'Abril Fatface','Bebas Neue','Bitter','Caveat','Comfortaa',
     'Cormorant Garamond','Cousine','Courier Prime','Crimson Pro',
     'Dancing Script','DM Mono','DM Sans','EB Garamond','Fira Code',
@@ -32,9 +37,57 @@
     'Nunito','Open Sans','Oswald','Outfit','Pacifico','Patrick Hand',
     'Permanent Marker','Playfair Display','Plus Jakarta Sans','Poppins',
     'Quicksand','Raleway','Righteous','Roboto','Roboto Mono',
-    'Source Code Pro','Source Serif 4','Space Grotesk','Space Mono',
-    'Work Sans',
-  ].sort((a, b) => a.localeCompare(b))
+    'Source Code Pro','Source Serif 4','Space Grotesk','Space Mono','Work Sans',
+  ])
+  const loadedFonts = new Set(bundledFonts)
+
+  function loadFont(name) {
+    if (loadedFonts.has(name)) return
+    loadedFonts.add(name)
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`
+    document.head.appendChild(link)
+  }
+
+  async function fetchFontList() {
+    if (fontsFetched || fontsLoading) return
+    fontsLoading = true
+    try {
+      const res = await fetch('https://fonts.google.com/metadata/fonts')
+      const text = await res.text()
+      const json = JSON.parse(text.replace(/^\)\]\}'\n/, ''))
+      googleFontsList = (json.familyMetadataList || [])
+        .map(f => f.family).filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+      fontsFetched = true
+    } catch {
+      // Fallback to bundled list if offline
+      googleFontsList = [...bundledFonts].sort((a, b) => a.localeCompare(b))
+    }
+    fontsLoading = false
+  }
+
+  // Lazy-load fonts as they scroll into view in the picker
+  let fontObserver = null
+  $effect(() => {
+    if (!showFont || !fontListEl) return
+    void filteredFonts.length // reactive dependency
+    fontObserver?.disconnect()
+    fontObserver = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) loadFont(e.target.dataset.font) })
+    }, { root: fontListEl, rootMargin: '120px' })
+    requestAnimationFrame(() => {
+      fontListEl?.querySelectorAll('[data-font]').forEach(el => fontObserver.observe(el))
+    })
+    return () => fontObserver?.disconnect()
+  })
+
+  // Auto-focus search input when picker opens
+  let fontSearchEl = $state(null)
+  $effect(() => {
+    if (showFont) requestAnimationFrame(() => fontSearchEl?.focus())
+  })
 
   let editorEl = $state(null)
   let fontListEl = $state(null)
@@ -828,7 +881,7 @@
 
       <!-- Font -->
       <div class="popout-wrap">
-        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; showTheme = false; showExport = false }} title="Font">
+        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; if (showFont) fetchFontList(); showTheme = false; showExport = false }} title="Font">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
           <span class="tooltip">{currentFontName()}</span>
         </button>
@@ -839,19 +892,47 @@
             type="text"
             placeholder="Search fonts…"
             bind:value={fontSearch}
+            bind:this={fontSearchEl}
             onclick={(e) => e.stopPropagation()}
+            onkeydown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                fontListEl?.querySelector('.font-item')?.focus()
+              } else if (e.key === 'Escape') {
+                showFont = false
+              }
+            }}
           />
           <div class="font-list" bind:this={fontListEl}>
-            {#each filteredFonts as f}
-              <button
-                class="font-item {currentFont.includes(f) ? 'active' : ''}"
-                style={`font-family: "${f}", sans-serif`}
-                onclick={() => selectFont(f)}
-                data-font={f}
-              >{f}</button>
-            {/each}
-            {#if filteredFonts.length === 0}
-              <div class="font-empty">No fonts found</div>
+            {#if fontsLoading}
+              <div class="font-empty">Loading fonts…</div>
+            {:else}
+              {#each filteredFonts as f, i}
+                <button
+                  class="font-item {currentFont.includes(f) ? 'active' : ''}"
+                  style={`font-family: "${f}", sans-serif`}
+                  onclick={() => selectFont(f)}
+                  data-font={f}
+                  onkeydown={(e) => {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      const btns = fontListEl.querySelectorAll('.font-item')
+                      btns[i + 1]?.focus()
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      if (i === 0) fontSearchEl?.focus()
+                      else fontListEl.querySelectorAll('.font-item')[i - 1]?.focus()
+                    } else if (e.key === 'Enter') {
+                      selectFont(f)
+                    } else if (e.key === 'Escape') {
+                      showFont = false
+                    }
+                  }}
+                >{f}</button>
+              {/each}
+              {#if filteredFonts.length === 0}
+                <div class="font-empty">No fonts found</div>
+              {/if}
             {/if}
           </div>
         </div>
