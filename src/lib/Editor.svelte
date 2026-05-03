@@ -317,6 +317,60 @@
     }
   }
 
+  // ── Floating selection toolbar ──
+  let showSelBar   = $state(false)
+  let selBarPos    = $state({ top: 0, left: 0 })
+  let selBarLink   = $state(false)
+  let linkInputVal = $state('')
+  let _savedRange  = null
+  let selBarEl     = $state(null)
+
+  function handleSelectionChange() {
+    const sel = window.getSelection()
+    // Keep open if link input is active
+    if (selBarLink) return
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { showSelBar = false; return }
+    if (!editorEl?.contains(sel.anchorNode))        { showSelBar = false; return }
+    if (sel.anchorNode?.parentElement?.closest('pre')) { showSelBar = false; return }
+    const rect = sel.getRangeAt(0).getBoundingClientRect()
+    if (rect.width === 0) { showSelBar = false; return }
+    selBarPos = {
+      top:  rect.top - 48,
+      left: Math.max(80, Math.min(window.innerWidth - 80, rect.left + rect.width / 2))
+    }
+    showSelBar = true
+  }
+
+  function selBarBold()   { document.execCommand('bold');   syncContent() }
+  function selBarItalic() { document.execCommand('italic'); syncContent() }
+  function selBarCode() {
+    const sel = window.getSelection()
+    if (!sel?.rangeCount) return
+    const txt = sel.getRangeAt(0).toString()
+    if (txt) { document.execCommand('insertHTML', false, `<code>${txt}</code>`); syncContent() }
+  }
+  function selBarOpenLink() {
+    const sel = window.getSelection()
+    if (sel?.rangeCount) _savedRange = sel.getRangeAt(0).cloneRange()
+    linkInputVal = ''
+    selBarLink = true
+    // focus the input on next tick
+    setTimeout(() => selBarEl?.querySelector('.sel-link-input')?.focus(), 0)
+  }
+  function selBarApplyLink() {
+    const url = linkInputVal.trim()
+    selBarLink = false
+    if (!url) return
+    if (_savedRange) {
+      const sel = window.getSelection()
+      sel?.removeAllRanges(); sel?.addRange(_savedRange)
+      _savedRange = null
+    }
+    document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url)
+    showSelBar = false
+    syncContent()
+  }
+
   // ── Input handler ──
   function handleInput() {
     // Track slash query if menu is open
@@ -739,10 +793,12 @@
 
 <svelte:window
   onkeydown={handleWindowKeydown}
+  onselectionchange={handleSelectionChange}
   onclick={(e) => {
     if (!e.target.closest('.popout-wrap') && !e.target.closest('.font-search')) closeAll()
     if (!e.target.closest('.slash-menu')) showSlash = false
     if (!e.target.closest('.code-toolbar') && !e.target.closest('pre')) { showLangPicker = false; activePre = null }
+    if (!e.target.closest('.sel-toolbar')) { selBarLink = false }
   }}
 />
 
@@ -856,6 +912,35 @@
     ></div>
   </main>
 </div>
+
+{#if showSelBar}
+<div
+  bind:this={selBarEl}
+  class="sel-toolbar"
+  style="top:{selBarPos.top}px;left:{selBarPos.left}px"
+  onmousedown={(e) => e.preventDefault()}
+>
+  {#if selBarLink}
+    <input
+      class="sel-link-input"
+      bind:value={linkInputVal}
+      placeholder="Paste URL…"
+      onkeydown={(e) => { if (e.key === 'Enter') selBarApplyLink(); if (e.key === 'Escape') { selBarLink = false } }}
+    />
+    <button class="sel-btn sel-confirm" onclick={selBarApplyLink} title="Apply">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
+    </button>
+  {:else}
+    <button class="sel-btn" onclick={selBarBold}     title="Bold"><b>B</b></button>
+    <button class="sel-btn sel-italic" onclick={selBarItalic}   title="Italic"><i>I</i></button>
+    <button class="sel-btn sel-mono"   onclick={selBarCode}     title="Inline code">{'<>'}</button>
+    <div class="sel-divider"></div>
+    <button class="sel-btn" onclick={selBarOpenLink} title="Link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </button>
+  {/if}
+</div>
+{/if}
 
 {#if activePre && activePreRect}
 <div

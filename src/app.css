@@ -166,6 +166,39 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
 .token.italic{font-style:italic}
 .token.entity{cursor:help}
 
+/* ── Floating selection toolbar ── */
+.sel-toolbar{
+  position:fixed;z-index:99999;
+  display:flex;align-items:center;gap:1px;
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:.45rem;padding:.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  transform:translateX(-50%);
+  pointer-events:auto;
+  animation:selbar-in .1s ease;
+}
+@keyframes selbar-in{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.sel-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:2rem;height:2rem;border:none;border-radius:.3rem;
+  background:transparent;color:var(--text-2);
+  cursor:pointer;font-size:.85rem;
+  transition:background .1s,color .1s;
+}
+.sel-btn:hover{background:var(--bg-3);color:var(--text-1)}
+.sel-btn b{font-weight:700;font-family:var(--font-1)}
+.sel-btn.sel-italic i{font-style:italic;font-family:Georgia,serif}
+.sel-btn.sel-mono{font-family:monospace;font-size:.8rem;letter-spacing:-.02em}
+.sel-divider{width:1px;height:1.2rem;background:var(--border);margin:0 .15rem;flex-shrink:0}
+.sel-link-input{
+  width:180px;padding:.2rem .45rem;
+  font-size:.78rem;font-family:var(--font-1);
+  color:var(--text-1);background:transparent;
+  border:none;outline:none;
+}
+.sel-btn.sel-confirm{color:var(--accent)}
+.sel-btn.sel-confirm:hover{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+
 /* ── Code block language toolbar ── */
 .code-toolbar{
   position:fixed;z-index:9998;
