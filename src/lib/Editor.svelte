@@ -59,6 +59,30 @@
   let fontsLoaded = $state(false)
   let isEmpty = $state(true)
 
+  // ── Slash command menu ──
+  let showSlash = $state(false)
+  let slashQuery = $state('')
+  let slashIndex = $state(0)
+  let slashPos = $state({ top: 0, left: 0 })
+  let slashBlock = null
+
+  const slashCommands = [
+    { id:'h1',   label:'Heading 1',    hint:'Large section heading',   icon:'H1',  tag:'h1' },
+    { id:'h2',   label:'Heading 2',    hint:'Medium section heading',  icon:'H2',  tag:'h2' },
+    { id:'h3',   label:'Heading 3',    hint:'Small section heading',   icon:'H3',  tag:'h3' },
+    { id:'ul',   label:'Bullet List',  hint:'Unordered list',          icon:'•',   action:'ul' },
+    { id:'ol',   label:'Numbered List',hint:'Ordered list',            icon:'1.',  action:'ol' },
+    { id:'code', label:'Code Block',   hint:'Syntax highlighted code', icon:'</>',action:'code' },
+    { id:'quote',label:'Quote',        hint:'Block quotation',         icon:'"',  tag:'blockquote' },
+    { id:'hr',   label:'Divider',      hint:'Horizontal separator',    icon:'—',   action:'hr' },
+  ]
+
+  let filteredCmds = $derived(
+    slashQuery.trim()
+      ? slashCommands.filter(c => c.label.toLowerCase().includes(slashQuery.toLowerCase()))
+      : slashCommands
+  )
+
   let filteredFonts = $derived(
     fontSearch.trim()
       ? googleFontsList.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase()))
@@ -156,13 +180,97 @@
   }
 
   // ── Input handler ──
-  function handleInput() { syncContent() }
+  function handleInput() {
+    // Track slash query if menu is open
+    if (showSlash && slashBlock) {
+      const text = slashBlock.textContent ?? ''
+      const idx = text.lastIndexOf('/')
+      if (idx === -1) {
+        showSlash = false
+      } else {
+        slashQuery = text.slice(idx + 1)
+        slashIndex = 0
+      }
+    }
+    syncContent()
+  }
+
+  // ── Execute slash command ──
+  function executeSlashCmd(cmd) {
+    const block = slashBlock
+    showSlash = false
+    slashQuery = ''
+    slashBlock = null
+    if (!block) return
+
+    // Clear the /query text from the block
+    if (block !== editorEl) block.innerHTML = '<br>'
+
+    const sel = window.getSelection()
+    function place(el) {
+      const r = document.createRange()
+      r.setStart(el.firstChild ?? el, 0); r.collapse(true)
+      sel?.removeAllRanges(); sel?.addRange(r)
+    }
+
+    if (cmd.tag) {
+      const el = document.createElement(cmd.tag)
+      el.innerHTML = '<br>'
+      block.replaceWith(el)
+      place(el)
+    } else if (cmd.action === 'ul' || cmd.action === 'ol') {
+      const list = document.createElement(cmd.action)
+      const li = document.createElement('li'); li.innerHTML = '<br>'
+      list.appendChild(li)
+      block.replaceWith(list)
+      place(li)
+    } else if (cmd.action === 'code') {
+      const pre = document.createElement('pre')
+      const code = document.createElement('code'); code.textContent = '\n'
+      pre.appendChild(code)
+      const after = document.createElement('p'); after.innerHTML = '<br>'
+      block.replaceWith(pre); pre.after(after)
+      const r = document.createRange()
+      r.setStart(code.firstChild, 0); r.collapse(true)
+      sel?.removeAllRanges(); sel?.addRange(r)
+    } else if (cmd.action === 'hr') {
+      const hr = document.createElement('hr')
+      const p = document.createElement('p'); p.innerHTML = '<br>'
+      block.replaceWith(hr); hr.after(p)
+      place(p)
+    }
+
+    editorEl?.focus()
+    syncContent()
+  }
 
   // ── Keydown handler ──
   function handleKeydown(e) {
     const sel = window.getSelection()
     const range = sel?.rangeCount ? sel.getRangeAt(0) : null
     const startNode = range?.startContainer
+
+    // ── Slash menu navigation ──
+    if (showSlash && filteredCmds.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); slashIndex = (slashIndex + 1) % filteredCmds.length; return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); slashIndex = (slashIndex - 1 + filteredCmds.length) % filteredCmds.length; return }
+      if (e.key === 'Enter')     { e.preventDefault(); executeSlashCmd(filteredCmds[slashIndex]); return }
+    }
+    if (showSlash && e.key === 'Escape') { showSlash = false; return }
+
+    // ── Detect / to open slash menu ──
+    if (e.key === '/' && !showSlash) {
+      setTimeout(() => {
+        const s = window.getSelection()
+        if (!s?.rangeCount) return
+        const rect = s.getRangeAt(0).getBoundingClientRect()
+        slashPos  = { top: rect.bottom + 6, left: rect.left }
+        slashBlock = getContainingBlock(s.getRangeAt(0).startContainer) ?? null
+        slashQuery = ''
+        slashIndex = 0
+        showSlash  = true
+      }, 0)
+    }
 
     // ── Backspace: fix first-element / special-block deletion ──
     if (e.key === 'Backspace' && range?.collapsed) {
@@ -462,7 +570,10 @@
 
 <svelte:window
   onkeydown={handleWindowKeydown}
-  onclick={(e) => { if (!e.target.closest('.popout-wrap') && !e.target.closest('.font-search')) closeAll() }}
+  onclick={(e) => {
+    if (!e.target.closest('.popout-wrap') && !e.target.closest('.font-search')) closeAll()
+    if (!e.target.closest('.slash-menu')) showSlash = false
+  }}
 />
 
 <div class="wrap">
@@ -569,7 +680,27 @@
       onkeydown={handleKeydown}
       onpaste={handlePaste}
       onfocusout={handleFocusOut}
-      data-placeholder="Start typing…"
+      data-placeholder="Start typing… or type / for commands"
     ></div>
   </main>
 </div>
+
+{#if showSlash && filteredCmds.length > 0}
+<div class="slash-menu" style="top:{slashPos.top}px;left:{slashPos.left}px">
+  <div class="slash-header">Blocks</div>
+  {#each filteredCmds as cmd, i}
+    <button
+      class="slash-item {slashIndex === i ? 'active' : ''}"
+      onmousedown={(e) => { e.preventDefault(); executeSlashCmd(cmd) }}
+      onmouseover={() => { slashIndex = i }}
+      onfocus={() => { slashIndex = i }}
+    >
+      <span class="slash-icon">{cmd.icon}</span>
+      <span class="slash-text">
+        <span class="slash-label">{cmd.label}</span>
+        <span class="slash-hint">{cmd.hint}</span>
+      </span>
+    </button>
+  {/each}
+</div>
+{/if}
