@@ -152,6 +152,84 @@
     scheduleHighlight()
   }
 
+  // ── Language auto-detection ──
+  const langOptions = [
+    { id:'auto',       label:'Auto-detect' },
+    { id:'javascript', label:'JavaScript' },
+    { id:'typescript', label:'TypeScript' },
+    { id:'python',     label:'Python' },
+    { id:'html',       label:'HTML' },
+    { id:'css',        label:'CSS' },
+    { id:'json',       label:'JSON' },
+    { id:'bash',       label:'Bash / Shell' },
+    { id:'rust',       label:'Rust' },
+    { id:'go',         label:'Go' },
+    { id:'java',       label:'Java' },
+    { id:'sql',        label:'SQL' },
+    { id:'yaml',       label:'YAML' },
+    { id:'c',          label:'C' },
+    { id:'cpp',        label:'C++' },
+    { id:'markup',     label:'XML / SVG' },
+  ]
+
+  let activePre      = $state(null)
+  let activePreRect  = $state(null)
+  let showLangPicker = $state(false)
+
+  function detectLanguage(code) {
+    const t = code.trim()
+    if (!t || t.length < 8) return null
+    const checks = [
+      ['typescript', [/\b(interface|type\s+\w+\s*=|enum|implements|readonly|namespace|as\s+\w+)\b/, /:\s*(string|number|boolean|void|any|never)\b/, /<[A-Z]\w+>/]],
+      ['javascript', [/\b(const|let|var|function\s+\w+|=>|async|await|require\s*\(|module\.exports)\b/, /console\.(log|error|warn)/, /\.(then|catch|finally)\(/, /`\${/]],
+      ['python',     [/\bdef\s+\w+\s*\(/, /\b(import|from)\s+\w+/, /\bclass\s+\w+.*:/, /\bprint\s*\(/, /#.*$/, /"""/]],
+      ['html',       [/<[a-z][\w-]*\s*[^>]*>/, /<!DOCTYPE\s+html/i, /<\/(div|span|p|a|h[1-6]|body|html)>/i]],
+      ['css',        [/[.#][\w-]+\s*\{/, /@(media|keyframes|import|font-face)/, /:\s*[\w-]+\s*;/]],
+      ['json',       [/^\s*[\[{][\s\S]*[\]}]\s*$/, /"[\w-]+":\s*("|{|\[|\d|true|false|null)/]],
+      ['bash',       [/^#!\//, /\b(echo|ls|cd|grep|sed|awk|chmod|export|curl|git)\s/, /\$\{?\w+\}?/, /\|\s*\w+/]],
+      ['sql',        [/\b(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE\s+TABLE)\b/i]],
+      ['rust',       [/\bfn\s+\w+\s*\(/, /\b(let mut|impl |struct |enum |trait |use |pub |crate)\b/, /::/]],
+      ['go',         [/\bfunc\s+\w+\s*\(/, /\b(package|var|type|interface|struct)\b/, /:=/, /fmt\./]],
+      ['java',       [/\b(public|private|protected)\s+(static\s+)?[\w<>]+\s+\w+\s*\(/, /System\.(out|err)\./, /@Override/]],
+      ['cpp',        [/#include\s*[<"]/, /\b(std::|cout|cin|nullptr|vector<|map<)\b/]],
+      ['c',          [/#include\s*[<"]/, /\b(printf|scanf|malloc|free|NULL)\b/, /\bint\s+main\s*\(/]],
+      ['yaml',       [/^[\w-]+:\s*\S/m, /^\s*-\s+\w/m, /^---\s*$/m]],
+      ['markup',     [/<\?xml/, /<[A-Z][A-Z:]+[\s>]/, /xmlns:/]],
+    ]
+    let best = null, bestScore = 0
+    for (const [lang, pats] of checks) {
+      const score = pats.filter(p => p.test(t)).length
+      if (score > bestScore) { bestScore = score; best = lang }
+    }
+    return bestScore >= 1 ? best : null
+  }
+
+  function setCodeLang(langId) {
+    if (!activePre) return
+    const codeEl = activePre.querySelector('code')
+    if (langId === 'auto') {
+      activePre.removeAttribute('data-lang')
+      if (codeEl) {
+        const detected = detectLanguage(codeEl.textContent)
+        if (detected) {
+          activePre.setAttribute('data-lang', detected)
+          codeEl.className = `language-${detected}`
+        } else {
+          codeEl.className = ''
+        }
+      }
+    } else {
+      activePre.setAttribute('data-lang', langId)
+      if (codeEl) codeEl.className = `language-${langId}`
+    }
+    if (codeEl) {
+      codeEl.textContent = codeEl.textContent // strip old Prism spans
+      Prism.highlightElement(codeEl)
+    }
+    showLangPicker = false
+    syncContent()
+  }
+
   // ── Prism syntax highlighting ──
   let hlTimeout
   function scheduleHighlight() {
@@ -481,13 +559,43 @@
     syncContent()
   }
 
-  // Re-highlight a code block when focus leaves it
+  // Re-highlight a code block when focus leaves it + auto-detect language
   function handleFocusOut(e) {
     const codeBlock = e.target.closest?.('pre code')
     if (codeBlock) {
       const raw = codeBlock.textContent
       codeBlock.textContent = raw
+      const pre = codeBlock.closest('pre')
+      if (pre && !pre.getAttribute('data-lang')) {
+        const detected = detectLanguage(raw)
+        if (detected) {
+          pre.setAttribute('data-lang', detected)
+          codeBlock.className = `language-${detected}`
+        }
+      }
       Prism.highlightElement(codeBlock)
+      if (activePre === pre) activePreRect = pre.getBoundingClientRect()
+    }
+  }
+
+  function handleEditorMouseOver(e) {
+    const pre = e.target.closest?.('pre')
+    if (pre && editorEl?.contains(pre)) {
+      activePre = pre
+      activePreRect = pre.getBoundingClientRect()
+    }
+  }
+
+  function handleEditorMouseLeave(e) {
+    if (!e.relatedTarget?.closest?.('.code-toolbar')) {
+      if (!showLangPicker) activePre = null
+    }
+  }
+
+  function handleToolbarMouseLeave(e) {
+    if (!e.relatedTarget?.closest?.('.code-toolbar') && !e.relatedTarget?.closest?.('pre')) {
+      showLangPicker = false
+      activePre = null
     }
   }
 
@@ -573,6 +681,7 @@
   onclick={(e) => {
     if (!e.target.closest('.popout-wrap') && !e.target.closest('.font-search')) closeAll()
     if (!e.target.closest('.slash-menu')) showSlash = false
+    if (!e.target.closest('.code-toolbar') && !e.target.closest('pre')) { showLangPicker = false; activePre = null }
   }}
 />
 
@@ -680,10 +789,35 @@
       onkeydown={handleKeydown}
       onpaste={handlePaste}
       onfocusout={handleFocusOut}
+      onmouseover={handleEditorMouseOver}
+      onmouseleave={handleEditorMouseLeave}
       data-placeholder="Start typing… or type / for commands"
     ></div>
   </main>
 </div>
+
+{#if activePre && activePreRect}
+<div
+  class="code-toolbar"
+  style="top:{activePreRect.top + 4}px;right:{window.innerWidth - activePreRect.right + 8}px"
+  onmouseleave={handleToolbarMouseLeave}
+>
+  <button class="lang-badge" onclick={() => { showLangPicker = !showLangPicker }}>
+    <span>{activePre.getAttribute('data-lang') || '···'}</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  {#if showLangPicker}
+  <div class="lang-dropdown">
+    {#each langOptions as opt}
+      <button
+        class="lang-option {(activePre.getAttribute('data-lang') || 'auto') === opt.id ? 'active' : ''}"
+        onmousedown={(e) => { e.preventDefault(); setCodeLang(opt.id) }}
+      >{opt.label}</button>
+    {/each}
+  </div>
+  {/if}
+</div>
+{/if}
 
 {#if showSlash && filteredCmds.length > 0}
 <div class="slash-menu" style="top:{slashPos.top}px;left:{slashPos.left}px">

@@ -166,6 +166,36 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
 .token.italic{font-style:italic}
 .token.entity{cursor:help}
 
+/* ── Code block language toolbar ── */
+.code-toolbar{
+  position:fixed;z-index:9998;
+  display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;
+  pointer-events:auto;
+}
+.lang-badge{
+  display:flex;align-items:center;gap:.3rem;
+  padding:.18rem .45rem;font-size:.65rem;font-family:var(--font-1);
+  color:var(--text-3);background:var(--bg-2);
+  border:1px solid var(--border);border-radius:.3rem;
+  cursor:pointer;text-transform:uppercase;letter-spacing:.04em;
+  transition:color .12s,border-color .12s;
+}
+.lang-badge:hover{color:var(--text-1);border-color:var(--accent)}
+.lang-dropdown{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:.4rem;overflow:hidden;
+  box-shadow:0 6px 24px rgba(0,0,0,.2);
+  min-width:140px;max-height:260px;overflow-y:auto;
+}
+.lang-option{
+  display:flex;align-items:center;padding:.3rem .65rem;
+  font-size:.78rem;font-family:var(--font-1);
+  color:var(--text-1);background:transparent;border:none;
+  width:100%;text-align:left;cursor:pointer;transition:background .08s;
+}
+.lang-option:hover{background:var(--bg-3)}
+.lang-option.active{color:var(--accent);background:var(--bg-3)}
+
 /* ── Slash command menu ── */
 .slash-menu{
   position:fixed;z-index:99999;
