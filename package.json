@@ -19,5 +19,8 @@
     "svelte-preprocess": "^6.0.3",
     "unocss": "^66.6.8",
     "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "prismjs": "^1.30.0"
   }
 }
