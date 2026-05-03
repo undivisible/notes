@@ -75,12 +75,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
 .font-search:focus{border-color:var(--accent)}
 .font-list{
   flex:1;min-height:0;overflow-y:auto;
-  display:flex;flex-direction:column;gap:1px;
+  display:flex;flex-direction:column;
 }
 .font-item{
-  width:100%;text-align:left;padding:.3rem .6rem;
-  background:transparent;border:none;border-radius:.3rem;
-  color:var(--text-1);cursor:pointer;font-size:.9rem;line-height:1.4;
+  display:block;width:100%;box-sizing:border-box;
+  text-align:left;padding:.22rem .55rem;
+  background:transparent;border:none;border-radius:.25rem;
+  color:var(--text-1);cursor:pointer;
+  font-size:.88rem;line-height:1.6;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background .1s;
 }
