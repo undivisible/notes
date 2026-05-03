@@ -102,7 +102,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
   padding:4rem 2rem 12rem;font-size:1rem;line-height:1.8;
   color:var(--text-1);outline:none;caret-color:var(--accent);word-wrap:break-word;
 }
-.notion-editor:empty::before{content:attr(data-placeholder);color:var(--text-3);pointer-events:none;font-style:italic}
+.notion-editor.is-empty::before{content:attr(data-placeholder);color:var(--text-3);pointer-events:none;font-style:italic;display:block}
 
 /* Blocks */
 .notion-editor h1{font-size:2rem;font-weight:700;margin:1.5rem 0 .5rem;border-bottom:1px solid var(--border);padding-bottom:.4rem;line-height:1.25}

@@ -57,6 +57,7 @@
   let showFont = $state(false)
   let fontSearch = $state('')
   let fontsLoaded = $state(false)
+  let isEmpty = $state(true)
 
   let filteredFonts = $derived(
     fontSearch.trim()
@@ -92,6 +93,7 @@
 
     const saved = localStorage.getItem('notes-content') || ''
     content = saved
+    isEmpty = saved.trim() === ''
     if (editorEl) {
       editorEl.innerHTML = saved ? markdownToHtml(saved) : ''
       editorEl.style.fontFamily = currentFont
@@ -120,6 +122,7 @@
   function syncContent() {
     if (!editorEl) return
     content = htmlToMarkdown(editorEl.innerHTML)
+    isEmpty = content.trim() === ''
     debouncedSave(content)
     updateCounts(content)
     scheduleHighlight()
@@ -561,7 +564,7 @@
       id="noteEditor"
       bind:this={editorEl}
       contenteditable="true"
-      class="notion-editor"
+      class="notion-editor {isEmpty ? 'is-empty' : ''}"
       oninput={handleInput}
       onkeydown={handleKeydown}
       onpaste={handlePaste}
