@@ -257,6 +257,66 @@
     return (el && el !== editorEl) ? el : null
   }
 
+  // ── Inline markdown shortcuts: **bold**, *italic*, `code` ──
+  function applyInlineFormat(textNode, matchStart, matchEnd, tag, content) {
+    const parent = textNode.parentNode
+    if (!parent) return false
+    const before = textNode.textContent.slice(0, matchStart)
+    const after  = textNode.textContent.slice(matchEnd)
+    const fmtEl  = document.createElement(tag)
+    fmtEl.textContent = content
+    const afterNode = document.createTextNode(after || '\u200b')
+    if (before) parent.insertBefore(document.createTextNode(before), textNode)
+    parent.insertBefore(fmtEl, textNode)
+    parent.insertBefore(afterNode, textNode)
+    parent.removeChild(textNode)
+    // Place cursor right after the formatted element
+    const sel = window.getSelection()
+    const r = document.createRange()
+    r.setStart(afterNode, after ? 0 : 1)
+    r.collapse(true)
+    sel?.removeAllRanges(); sel?.addRange(r)
+    return true
+  }
+
+  let _inlineSkip = false
+  function tryInlineMarkdown() {
+    if (_inlineSkip) return
+    const sel = window.getSelection()
+    if (!sel?.rangeCount || !sel.isCollapsed) return
+    const range = sel.getRangeAt(0)
+    const node  = range.startContainer
+    if (node.nodeType !== 3) return                      // text node only
+    if (node.parentElement?.closest('pre, code')) return // skip code blocks
+    const offset = range.startOffset
+    const text   = node.textContent.slice(0, offset)
+
+    // **bold**
+    const boldM = text.match(/\*\*([^*\n]+)\*\*$/)
+    if (boldM) {
+      _inlineSkip = true
+      applyInlineFormat(node, offset - boldM[0].length, offset, 'strong', boldM[1])
+      _inlineSkip = false
+      syncContent(); return
+    }
+    // *italic* (not preceded by another *)
+    const italicM = text.match(/(?<!\*)\*([^*\n]+)\*$/)
+    if (italicM) {
+      _inlineSkip = true
+      applyInlineFormat(node, offset - italicM[0].length, offset, 'em', italicM[1])
+      _inlineSkip = false
+      syncContent(); return
+    }
+    // `inline code`
+    const codeM = text.match(/`([^`\n]+)`$/)
+    if (codeM) {
+      _inlineSkip = true
+      applyInlineFormat(node, offset - codeM[0].length, offset, 'code', codeM[1])
+      _inlineSkip = false
+      syncContent(); return
+    }
+  }
+
   // ── Input handler ──
   function handleInput() {
     // Track slash query if menu is open
@@ -270,6 +330,7 @@
         slashIndex = 0
       }
     }
+    tryInlineMarkdown()
     syncContent()
   }
 
@@ -606,10 +667,10 @@
     syncContent()
   }
 
-  function applyBold()    { editorEl?.focus(); document.execCommand('bold');              syncContent() }
-  function applyItalic()  { editorEl?.focus(); document.execCommand('italic');            syncContent() }
+  function applyBold()    { document.execCommand('bold');              syncContent() }
+  function applyItalic()  { document.execCommand('italic');            syncContent() }
   function applyHeading() { execFormat('h2') }
-  function applyList()    { editorEl?.focus(); document.execCommand('insertUnorderedList'); syncContent() }
+  function applyList()    { document.execCommand('insertUnorderedList'); syncContent() }
   function applyQuote()   { execFormat('blockquote') }
   function applyCode() {
     if (!editorEl) return
@@ -740,12 +801,12 @@
 
       <div class="sb-divider"></div>
 
-      <button class="sidebar-icon" onclick={applyBold}    title="Bold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5h6a3 3 0 0 1 0 6H9z"/><path d="M9 12h6a3 3 0 0 1 0 6H9z"/></svg><span class="tooltip">Bold (⌘B)</span></button>
-      <button class="sidebar-icon" onclick={applyItalic}  title="Italic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 4H10"/><path d="M14 20H5"/><line x1="15" y1="4" x2="10" y2="20"/></svg><span class="tooltip">Italic (⌘I)</span></button>
-      <button class="sidebar-icon" onclick={applyHeading} title="Heading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6v12"/><path d="M20 6v12"/><path d="M4 12h16"/></svg><span class="tooltip">Heading (⌘H)</span></button>
-      <button class="sidebar-icon" onclick={applyList}    title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg><span class="tooltip">List</span></button>
-      <button class="sidebar-icon" onclick={applyQuote}   title="Quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-7V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h3"/></svg><span class="tooltip">Quote</span></button>
-      <button class="sidebar-icon" onclick={applyCode}    title="Code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span class="tooltip">Code</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyBold}    title="Bold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5h6a3 3 0 0 1 0 6H9z"/><path d="M9 12h6a3 3 0 0 1 0 6H9z"/></svg><span class="tooltip">Bold (⌘B)</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyItalic}  title="Italic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 4H10"/><path d="M14 20H5"/><line x1="15" y1="4" x2="10" y2="20"/></svg><span class="tooltip">Italic (⌘I)</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyHeading} title="Heading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6v12"/><path d="M20 6v12"/><path d="M4 12h16"/></svg><span class="tooltip">Heading (⌘H)</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyList}    title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg><span class="tooltip">List</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyQuote}   title="Quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-7V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h3"/></svg><span class="tooltip">Quote</span></button>
+      <button class="sidebar-icon" onmousedown={(e)=>e.preventDefault()} onclick={applyCode}    title="Code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span class="tooltip">Code</span></button>
 
       <div class="sb-divider"></div>
 
