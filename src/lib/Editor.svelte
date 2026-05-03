@@ -122,9 +122,24 @@
       : googleFontsList
   )
 
+  const RECENT_KEY = 'notes-recent-fonts'
+  const MAX_RECENT = 8
+  let recentFonts = $state([])
+
+  function loadRecentFonts() {
+    try { recentFonts = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { recentFonts = [] }
+  }
+
+  function saveRecentFont(name) {
+    const next = [name, ...recentFonts.filter(f => f !== name)].slice(0, MAX_RECENT)
+    recentFonts = next
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  }
+
   onMount(() => {
     const savedFont = localStorage.getItem('notes-font') || currentFont
     currentFont = savedFont
+    loadRecentFonts()
 
     const savedTheme = localStorage.getItem('notes-theme')
     if (savedTheme) { currentTheme = savedTheme; document.body.className = 'theme-' + savedTheme }
@@ -805,6 +820,7 @@
     currentFont = `'${f}', sans-serif`
     localStorage.setItem('notes-font', currentFont)
     if (editorEl) editorEl.style.fontFamily = currentFont
+    saveRecentFont(f)
     showFont = false; fontSearch = ''
   }
 
@@ -866,7 +882,7 @@
 
       <!-- Font -->
       <div class="popout-wrap">
-        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; if (showFont) fetchFontList(); showTheme = false; showExport = false }} title="Font">
+        <button class="sidebar-icon" onclick={(e) => { e.stopPropagation(); showFont = !showFont; if (showFont) { fetchFontList(); recentFonts.forEach(f => loadFont(f)) } showTheme = false; showExport = false }} title="Font">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
           <span class="tooltip">{currentFontName()}</span>
         </button>
@@ -892,26 +908,36 @@
             {#if fontsLoading}
               <div class="font-empty">Loading fonts…</div>
             {:else}
+              {#if !fontSearch.trim() && recentFonts.length > 0}
+                <div class="font-section-label">Recent</div>
+                {#each recentFonts as f, i}
+                  <button
+                    class="font-item {currentFont.includes(f) ? 'active' : ''}"
+                    style={`font-family: "${f}", sans-serif`}
+                    onclick={() => selectFont(f)}
+                    onkeydown={(e) => {
+                      if (e.key === 'ArrowDown') { e.preventDefault(); fontListEl.querySelectorAll('.font-item')[i + 1]?.focus() }
+                      else if (e.key === 'ArrowUp') { e.preventDefault(); i === 0 ? fontSearchEl?.focus() : fontListEl.querySelectorAll('.font-item')[i - 1]?.focus() }
+                      else if (e.key === 'Enter') selectFont(f)
+                      else if (e.key === 'Escape') showFont = false
+                    }}
+                  >{f}</button>
+                {/each}
+                <div class="font-section-divider"></div>
+                <div class="font-section-label">All fonts</div>
+              {/if}
               {#each filteredFonts as f, i}
+                {@const allIdx = (!fontSearch.trim() && recentFonts.length > 0) ? recentFonts.length + i : i}
                 <button
                   class="font-item {currentFont.includes(f) ? 'active' : ''}"
                   style={`font-family: "${f}", sans-serif`}
                   onclick={() => selectFont(f)}
                   data-font={f}
                   onkeydown={(e) => {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault()
-                      const btns = fontListEl.querySelectorAll('.font-item')
-                      btns[i + 1]?.focus()
-                    } else if (e.key === 'ArrowUp') {
-                      e.preventDefault()
-                      if (i === 0) fontSearchEl?.focus()
-                      else fontListEl.querySelectorAll('.font-item')[i - 1]?.focus()
-                    } else if (e.key === 'Enter') {
-                      selectFont(f)
-                    } else if (e.key === 'Escape') {
-                      showFont = false
-                    }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); fontListEl.querySelectorAll('.font-item')[allIdx + 1]?.focus() }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); allIdx === 0 ? fontSearchEl?.focus() : fontListEl.querySelectorAll('.font-item')[allIdx - 1]?.focus() }
+                    else if (e.key === 'Enter') selectFont(f)
+                    else if (e.key === 'Escape') showFont = false
                   }}
                 >{f}</button>
               {/each}
