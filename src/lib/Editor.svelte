@@ -54,10 +54,10 @@
     if (fontsFetched || fontsLoading) return
     fontsLoading = true
     try {
-      const res = await fetch('https://fonts.google.com/metadata/fonts')
-      const text = await res.text()
-      const json = JSON.parse(text.replace(/^\)\]\}'\n/, ''))
-      googleFontsList = (json.familyMetadataList || [])
+      // api.fontsource.org is CORS-enabled and lists all 2000+ Google Fonts
+      const res = await fetch('https://api.fontsource.org/v1/fonts')
+      const json = await res.json()
+      googleFontsList = (Array.isArray(json) ? json : Object.values(json))
         .map(f => f.family).filter(Boolean)
         .sort((a, b) => a.localeCompare(b))
       fontsFetched = true
