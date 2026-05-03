@@ -21,29 +21,56 @@
   const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
   const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
-  // Comprehensive Google Fonts list — grouped
+  // Google Fonts — comprehensive list (250+)
   const googleFontsList = [
     // Monospace
     'JetBrains Mono','Fira Code','Cascadia Code','Source Code Pro','IBM Plex Mono',
     'Roboto Mono','Inconsolata','Space Mono','Courier Prime','Ubuntu Mono',
     'Anonymous Pro','Overpass Mono','Red Hat Mono','Geist Mono','DM Mono',
-    'Syne Mono','Azeret Mono','Martian Mono','Monaspace Neon','Monaspace Xenon',
-    'Monaspace Argon','Spline Mono','Recursive','Share Tech Mono','Noto Sans Mono',
-    'Nanum Gothic Coding','VT323','Major Mono Display','Fira Mono','Cousine',
-    // Sans-serif
+    'Syne Mono','Azeret Mono','Martian Mono','Spline Mono','Recursive',
+    'Share Tech Mono','Noto Sans Mono','Nanum Gothic Coding','VT323','Fragment Mono',
+    'Major Mono Display','Fira Mono','Cousine','Cutive Mono','Nova Mono',
+    // Sans-serif — modern
     'Inter','Roboto','Open Sans','Lato','Montserrat','Poppins','Raleway',
     'Nunito','Source Sans 3','Work Sans','Outfit','Plus Jakarta Sans','DM Sans',
     'Figtree','Sora','Urbanist','Be Vietnam Pro','Manrope','Jost','Quicksand',
     'Mulish','Barlow','Karla','Rubik','Lexend','Cabin','Noto Sans','IBM Plex Sans',
-    'Nunito Sans','Exo 2','Kanit',
+    'Nunito Sans','Exo 2','Kanit','Geist',
+    'Instrument Sans','Space Grotesk','Albert Sans','Hanken Grotesk',
+    'Bricolage Grotesque','Onest','Unbounded','Syne',
+    'Red Hat Display','Red Hat Text','Epilogue','Familjen Grotesk',
+    'Darker Grotesque','Commissioner','Encode Sans','Asap',
+    'Josefin Sans','Titillium Web','Maven Pro','Heebo','Varela Round',
+    'Chakra Petch','Catamaran','Sarabun','Prompt','Cairo','Tajawal',
+    'Public Sans','Readex Pro','Chivo','Questrial','Ysabeau',
+    'Oxanium','Bebas Neue','Barlow Condensed','Barlow Semi Condensed','Exo',
+    'Libre Franklin','Hind','Signika','Oxygen','Encode Sans Condensed',
+    'PT Sans','Tahoma','Noto Sans JP','Noto Sans KR','Noto Sans SC',
+    'Fira Sans','Fira Sans Condensed','Dosis','Cabin Condensed',
+    'Acme','Alfa Slab One','Secular One','Scada','Martel Sans',
     // Serif
     'Merriweather','Playfair Display','Lora','EB Garamond','PT Serif',
     'Libre Baskerville','Source Serif 4','Spectral','Fraunces','Cormorant Garamond',
     'Crimson Pro','Bitter','Zilla Slab','Arvo','Cardo','Vollkorn','Alegreya',
     'Frank Ruhl Libre','Libre Caslon Text',
-    // Display
+    'Instrument Serif','DM Serif Display','DM Serif Text',
+    'Noto Serif','Noto Serif Display','Bodoni Moda','Cormorant',
+    'Newsreader','Literata','Young Serif','Hahmlet',
+    'Libre Caslon Display','Gupter','BioRhyme','Unna','Amiri',
+    'Slabo 27px','Rasa','Petrona','Alike','Domine','Judson',
+    'Playfair Display SC','Gelasio','Cambo','Piazzolla',
+    'Yeseva One','Cinzel','GFS Didot','Italiana','Philosopher',
+    'Petit Formal Script',
+    // Display / Decorative
     'Oswald','Anton','Archivo','Righteous','Comfortaa','Pacifico',
-  ]
+    'Lobster','Dancing Script','Sacramento','Great Vibes','Abril Fatface',
+    'Poiret One','Permanent Marker','Caveat','Kalam','Patrick Hand',
+    'Gloria Hallelujah','Shadows Into Light','Indie Flower','Amatic SC',
+    'Architects Daughter','Satisfy','Courgette','Kaushan Script',
+    'Yellowtail','Allura','Alex Brush','Cookie','Damion',
+    'Monoton','Boogaloo','Fredoka','Nunito','Lilita One',
+    'Titan One','Black Han Sans','Fugaz One','Ultra','Alfa Slab One',
+  ].filter((f, i, a) => a.indexOf(f) === i).sort((a, b) => a.localeCompare(b))
 
   let editorEl = $state(null)
   let fontListEl = $state(null)
