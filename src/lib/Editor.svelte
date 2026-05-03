@@ -87,6 +87,109 @@
   let fontSearch = $state('')
   let isEmpty = $state(true)
 
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function newTabId() { return `tab-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }
+  function tabKey(id) { return `notes-content-${id}` }
+
+  let tabs = $state([])
+  let activeTabId = $state('')
+  let renamingTabId = $state(null)
+  let renameVal = $state('')
+  let renameInputEl = $state(null)
+
+  function tabDisplayTitle(tab) {
+    if (tab.title) return tab.title
+    const c = tab.id === activeTabId
+      ? content
+      : (localStorage.getItem(tabKey(tab.id)) || '')
+    const first = c.replace(/^#+\s*/, '').split('\n')[0].trim().slice(0, 28)
+    return first || 'Untitled'
+  }
+
+  function loadTabs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('notes-tabs') || 'null')
+      if (Array.isArray(saved) && saved.length > 0) {
+        tabs = saved
+        activeTabId = localStorage.getItem('notes-active-tab') || saved[0].id
+        return
+      }
+    } catch {}
+    const id = newTabId()
+    tabs = [{ id, title: '' }]
+    activeTabId = id
+    // Migrate legacy single-note content
+    const legacy = localStorage.getItem('notes-content')
+    if (legacy) localStorage.setItem(tabKey(id), legacy)
+    _saveTabs()
+  }
+
+  function _saveTabs() {
+    localStorage.setItem('notes-tabs', JSON.stringify(tabs))
+    localStorage.setItem('notes-active-tab', activeTabId)
+  }
+
+  function _loadTabContent(id) {
+    const saved = localStorage.getItem(tabKey(id)) || ''
+    content = saved
+    isEmpty = saved.trim() === ''
+    if (editorEl) {
+      editorEl.innerHTML = saved ? markdownToHtml(saved) : ''
+      editorEl.style.fontFamily = currentFont
+      scheduleHighlight()
+    }
+    updateCounts(saved)
+  }
+
+  function switchTab(id) {
+    if (id === activeTabId) return
+    localStorage.setItem(tabKey(activeTabId), htmlToMarkdown(editorEl?.innerHTML || ''))
+    activeTabId = id
+    localStorage.setItem('notes-active-tab', id)
+    _loadTabContent(id)
+    closeAll()
+  }
+
+  function newTab() {
+    localStorage.setItem(tabKey(activeTabId), htmlToMarkdown(editorEl?.innerHTML || ''))
+    const id = newTabId()
+    tabs = [...tabs, { id, title: '' }]
+    activeTabId = id
+    content = ''; isEmpty = true
+    if (editorEl) { editorEl.innerHTML = ''; editorEl.focus() }
+    updateCounts('')
+    _saveTabs()
+  }
+
+  function closeTab(id, e) {
+    e?.stopPropagation()
+    if (tabs.length === 1) return
+    localStorage.removeItem(tabKey(id))
+    const idx = tabs.findIndex(t => t.id === id)
+    const next = tabs.filter(t => t.id !== id)
+    tabs = next
+    if (activeTabId === id) {
+      const newActive = next[Math.min(idx, next.length - 1)]
+      activeTabId = newActive.id
+      localStorage.setItem('notes-active-tab', newActive.id)
+      _loadTabContent(newActive.id)
+    }
+    _saveTabs()
+  }
+
+  function startRename(tab) {
+    renamingTabId = tab.id
+    renameVal = tab.title || tabDisplayTitle(tab)
+    requestAnimationFrame(() => { renameInputEl?.select() })
+  }
+
+  function finishRename() {
+    if (!renamingTabId) return
+    tabs = tabs.map(t => t.id === renamingTabId ? { ...t, title: renameVal.trim() } : t)
+    renamingTabId = null
+    _saveTabs()
+  }
+
   // ── Slash command menu ──
   let showSlash = $state(false)
   let slashQuery = $state('')
@@ -145,22 +248,16 @@
     if (savedTheme) { currentTheme = savedTheme; document.body.className = 'theme-' + savedTheme }
     else document.body.className = 'theme-' + currentTheme
 
-    const saved = localStorage.getItem('notes-content') || ''
-    content = saved
-    isEmpty = saved.trim() === ''
-    if (editorEl) {
-      editorEl.innerHTML = saved ? markdownToHtml(saved) : ''
-      editorEl.style.fontFamily = currentFont
-      scheduleHighlight()
-    }
-    updateCounts(saved)
+    loadTabs()
+    _loadTabContent(activeTabId)
   })
 
   let saveTimeout
   function debouncedSave(md) {
     clearTimeout(saveTimeout)
     saveTimeout = setTimeout(() => {
-      localStorage.setItem('notes-content', md)
+      localStorage.setItem(tabKey(activeTabId), md)
+      _saveTabs()
       isSaving = true
       lastSaved = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       setTimeout(() => { isSaving = false }, 1000)
@@ -720,7 +817,9 @@
 
   function handleWindowKeydown(e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); showExport = !showExport; showTheme = false; showFont = false }
-    if (e.key === 'Escape') closeAll()
+    if ((e.metaKey || e.ctrlKey) && e.key === 't') { e.preventDefault(); newTab() }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'w') { e.preventDefault(); closeTab(activeTabId) }
+    if (e.key === 'Escape') { if (renamingTabId) { renamingTabId = null } else closeAll() }
   }
 
   function handlePaste(e) {
@@ -992,19 +1091,52 @@
   </aside>
 
   <main class="editor-area">
-    <div
-      id="noteEditor"
-      bind:this={editorEl}
-      contenteditable="true"
-      class="notion-editor {isEmpty ? 'is-empty' : ''}"
-      oninput={handleInput}
-      onkeydown={handleKeydown}
-      onpaste={handlePaste}
-      onfocusout={handleFocusOut}
-      onmouseover={handleEditorMouseOver}
-      onmouseleave={handleEditorMouseLeave}
-      data-placeholder="Start typing… or type / for commands"
-    ></div>
+    <!-- VS Code-style tab bar -->
+    <div class="tab-bar">
+      <div class="tab-list">
+        {#each tabs as tab (tab.id)}
+          <div class="tab {tab.id === activeTabId ? 'active' : ''}">
+            {#if renamingTabId === tab.id}
+              <input
+                class="tab-rename-input"
+                bind:this={renameInputEl}
+                bind:value={renameVal}
+                onblur={finishRename}
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => { if (e.key === 'Enter') finishRename(); if (e.key === 'Escape') { renamingTabId = null } }}
+              />
+            {:else}
+              <button class="tab-btn" onclick={() => switchTab(tab.id)} ondblclick={() => startRename(tab)}>
+                {tabDisplayTitle(tab)}
+              </button>
+            {/if}
+            <button class="tab-close" onclick={(e) => closeTab(tab.id, e)} title="Close" tabindex="-1">
+              <svg viewBox="0 0 10 10" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg>
+            </button>
+          </div>
+        {/each}
+      </div>
+      <button class="tab-new" onclick={newTab} title="New note (⌘T)">
+        <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
+      </button>
+    </div>
+
+    <!-- Scrollable editor -->
+    <div class="editor-scroll">
+      <div
+        id="noteEditor"
+        bind:this={editorEl}
+        contenteditable="true"
+        class="notion-editor {isEmpty ? 'is-empty' : ''}"
+        oninput={handleInput}
+        onkeydown={handleKeydown}
+        onpaste={handlePaste}
+        onfocusout={handleFocusOut}
+        onmouseover={handleEditorMouseOver}
+        onmouseleave={handleEditorMouseLeave}
+        data-placeholder="Start typing… or type / for commands"
+      ></div>
+    </div>
   </main>
 </div>
 

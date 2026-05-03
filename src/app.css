@@ -123,13 +123,65 @@
   .export-item svg { width: .875rem; height: .875rem; color: var(--text-2); flex-shrink: 0; }
 
   /* ── Editor ── */
-  .editor-area { margin-left: 3rem; flex: 1; height: 100vh; overflow-y: auto; }
+  .editor-area {
+    margin-left: 3rem; flex: 1; height: 100vh;
+    @apply flex flex-col overflow-hidden;
+  }
+  .editor-scroll { @apply flex-1 overflow-y-auto min-h-0; }
   .notion-editor {
     @apply w-full outline-none;
     min-height: 100%; max-width: 48rem; margin: 0 auto;
-    padding: 4rem 2rem 12rem; font-size: 1rem; line-height: 1.8;
+    padding: 3rem 2rem 12rem; font-size: 1rem; line-height: 1.8;
     color: var(--text-1); caret-color: var(--accent); word-wrap: break-word;
   }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    @apply flex items-stretch flex-shrink-0 overflow-hidden;
+    height: 2.25rem; background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-list {
+    @apply flex items-stretch overflow-x-auto flex-1;
+    scrollbar-width: none;
+  }
+  .tab-list::-webkit-scrollbar { display: none; }
+  .tab {
+    @apply flex items-stretch flex-shrink-0 relative;
+    max-width: 180px; min-width: 80px;
+    border-right: 1px solid var(--border);
+  }
+  .tab.active { background: var(--bg-1); }
+  .tab.active::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px; background: var(--accent);
+  }
+  .tab-btn {
+    @apply flex-1 text-left truncate border-none bg-transparent cursor-pointer;
+    padding: 0 .3rem 0 .7rem; font-size: .78rem;
+    color: var(--text-3); font-family: var(--font-1);
+    transition: color .12s;
+  }
+  .tab.active .tab-btn { color: var(--text-1); }
+  .tab-btn:hover { color: var(--text-1); }
+  .tab-rename-input {
+    @apply flex-1 min-w-0 border-none outline-none bg-transparent;
+    padding: 0 .3rem 0 .7rem; font-size: .78rem;
+    color: var(--text-1); font-family: var(--font-1);
+  }
+  .tab-close {
+    @apply flex items-center justify-center flex-shrink-0 border-none bg-transparent cursor-pointer;
+    width: 1.5rem; color: transparent; transition: color .12s, background .12s;
+    border-radius: .2rem; margin: .25rem .2rem;
+  }
+  .tab:hover .tab-close, .tab.active .tab-close { color: var(--text-3); }
+  .tab-close:hover { color: var(--text-1) !important; background: var(--bg-3); }
+  .tab-new {
+    @apply flex items-center justify-center flex-shrink-0 border-none bg-transparent cursor-pointer;
+    width: 2.25rem; color: var(--text-3);
+    border-left: 1px solid var(--border); transition: color .12s, background .12s;
+  }
+  .tab-new:hover { color: var(--text-1); background: var(--bg-3); }
   .notion-editor.is-empty::before {
     content: attr(data-placeholder); color: var(--text-3);
     pointer-events: none; font-style: italic; display: block;
