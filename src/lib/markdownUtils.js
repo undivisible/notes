@@ -1,10 +1,10 @@
-// Markdown to HTML converter - Notion style
+// Markdown to HTML converter
 export function markdownToHtml(markdown) {
-  if (!markdown) return '<p class="text-notion-textMuted">Start typing your notes here...</p>'
+  if (!markdown) return ''
 
   let html = escapeHtml(markdown)
 
-  // Code blocks (fenced)
+  // Code blocks (fenced) - before other processing
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
 
   // Inline code
@@ -21,10 +21,10 @@ export function markdownToHtml(markdown) {
   // Horizontal rule
   html = html.replace(/^---$/gm, '<hr>')
 
-  // Blockquotes (must be before lists)
+  // Blockquotes
   html = html.replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>')
 
-  // Tables - match header and separator line
+  // Tables
   html = html.replace(/\|(.+)\|\r?\n\|[\s:-|]+\|\r?\n((?:\|.*\|\r?\n?)+)/g, (match, header, rows) => {
     let table = '<table><thead><tr>'
     header.split('|').filter(h => h.trim()).forEach(h => {
@@ -44,73 +44,111 @@ export function markdownToHtml(markdown) {
     return table
   })
 
-  // Process lists - convert markdown lists to HTML
+  // Process lists
   const lines = html.split('\n')
   const result = []
-  let inUl = false
-  let inOl = false
+  let inUl = false, inOl = false
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     const trimmed = line.trim()
 
-    // Unordered list item: - or * or +
     if (/^[-*+] /.test(trimmed)) {
-      if (!inUl) {
-        result.push('<ul>')
-        inUl = true
-      }
+      if (!inUl) { result.push('<ul>'); inUl = true }
       result.push('<li>' + trimmed.substring(2) + '</li>')
-    } 
-    // Ordered list item: number.
-    else if (/^\d+\. /.test(trimmed)) {
-      if (!inOl) {
-        result.push('<ol>')
-        inOl = true
-      }
+    } else if (/^\d+\. /.test(trimmed)) {
+      if (!inOl) { result.push('<ol>'); inOl = true }
       result.push('<li>' + trimmed.replace(/^\d+\. /, '') + '</li>')
-    } 
-    else {
-      // Close any open lists
-      if (inUl) {
-        result.push('</ul>')
-        inUl = false
-      }
-      if (inOl) {
-        result.push('</ol>')
-        inOl = false
-      }
+    } else {
+      if (inUl) { result.push('</ul>'); inUl = false }
+      if (inOl) { result.push('</ol>'); inOl = false }
 
-      // Bold and italic
       let processed = trimmed
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.+?)__/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/_(.+?)_/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>')
 
-      // Links
-      processed = processed.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>')
-
-      // Add paragraph if needed
-      if (trimmed !== '' && !trimmed.match(/^<(h[1-6]|p|ul|ol|li|blockquote|table|pre|code|hr)[^>]*>/) && !trimmed.match(/^<\/(ul|ol|li|blockquote|table)>/)) {
-        if (trimmed.startsWith('<h') || trimmed.startsWith('<blockquote') || trimmed.startsWith('<pre') || trimmed.startsWith('<table')) {
-          result.push(processed)
-        } else {
-          result.push('<p>' + processed + '</p>')
-        }
-      } else if (trimmed !== '') {
-        result.push(processed)
+      if (trimmed !== '') {
+        const isBlock = trimmed.match(/^<(h[1-6]|ul|ol|li|blockquote|table|pre|code|hr)[^>]*>/)
+        result.push(isBlock ? processed : '<p>' + processed + '</p>')
+      } else {
+        result.push('')
       }
     }
   }
 
-  // Close any remaining lists
   if (inUl) result.push('</ul>')
   if (inOl) result.push('</ol>')
 
-  html = result.join('\n')
+  return result.join('\n')
+}
 
-  return html
+// HTML to Markdown converter (for WYSIWYG contenteditable → save as markdown)
+export function htmlToMarkdown(html) {
+  if (!html) return ''
+  const el = document.createElement('div')
+  el.innerHTML = html
+  const md = nodeToMd(el)
+  return md.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function nodeToMd(node) {
+  if (node.nodeType === 3) {
+    return node.textContent
+  }
+  if (node.nodeType !== 1) return ''
+
+  const tag = node.tagName.toLowerCase()
+  const kids = () => Array.from(node.childNodes).map(nodeToMd).join('')
+  const text = () => kids().trim()
+
+  switch (tag) {
+    case 'div':
+    case 'p': {
+      const t = text()
+      return t ? t + '\n' : '\n'
+    }
+    case 'br': return '\n'
+    case 'strong':
+    case 'b': {
+      const t = kids()
+      return t.trim() ? `**${t.trim()}**` : ''
+    }
+    case 'em':
+    case 'i': {
+      const t = kids()
+      return t.trim() ? `*${t.trim()}*` : ''
+    }
+    case 'h1': return `# ${text()}\n`
+    case 'h2': return `## ${text()}\n`
+    case 'h3': return `### ${text()}\n`
+    case 'h4': return `#### ${text()}\n`
+    case 'h5': return `##### ${text()}\n`
+    case 'h6': return `###### ${text()}\n`
+    case 'blockquote': return `> ${text()}\n`
+    case 'code':
+      if (node.parentElement?.tagName.toLowerCase() === 'pre') return kids()
+      return `\`${kids()}\``
+    case 'pre': return '```\n' + text() + '\n```\n'
+    case 'ul':
+    case 'ol': return kids()
+    case 'li': return `- ${text()}\n`
+    case 'a': return `[${kids()}](${node.getAttribute('href') || ''})`
+    case 'hr': return '---\n'
+    case 'img': return `![${node.getAttribute('alt') || ''}](${node.getAttribute('src') || ''})\n`
+    case 'table': return kids()
+    case 'thead':
+    case 'tbody': return kids()
+    case 'tr': {
+      const cells = Array.from(node.children).map(c => nodeToMd(c).trim())
+      return '| ' + cells.join(' | ') + ' |\n'
+    }
+    case 'th':
+    case 'td': return text()
+    default: return kids()
+  }
 }
 
 function escapeHtml(text) {
@@ -119,43 +157,9 @@ function escapeHtml(text) {
   return div.innerHTML
 }
 
-// Copy markdown as HTML (Notion-style copy)
-export function copyAsMarkdown(markdown) {
-  const html = markdownToHtml(markdown)
-  
-  // Try to copy as HTML first (for rich paste)
-  const blob = new Blob([html], { type: 'text/html' })
-  const clipboardItem = new ClipboardItem({ 'text/html': blob })
-  
-  navigator.clipboard.write([clipboardItem]).catch(() => {
-    // Fallback to plain text
-    navigator.clipboard.writeText(markdown)
-  })
-}
-
-// Process paste to preserve markdown formatting
-export function processMarkdownOnPaste(e) {
-  const text = e.clipboardData.getData('text/plain')
-  const html = e.clipboardData.getData('text/html')
-  
-  // If copying from a rich source, try to convert to markdown
-  if (html) {
-    // Simple conversion - strip tags but preserve basic formatting
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = html
-    let converted = tempDiv.innerText || tempDiv.textContent
-    // Preserve line breaks
-    converted = converted.replace(/\n/g, '\n')
-    return converted
-  }
-  
-  return text
-}
-
-
 export function download(blob, filename) {
   const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
+  const a = document.createElement('a')
   a.href = url
   a.download = filename
   a.click()
