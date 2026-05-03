@@ -70,8 +70,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
 }
 .font-search:focus{border-color:var(--accent)}
 .font-list{
-  max-height:280px;overflow-y:auto;display:flex;flex-direction:column;
-  gap:1px;
+  flex:1;min-height:0;max-height:260px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:1px;
 }
 .font-item{
   width:100%;text-align:left;padding:.3rem .6rem;
