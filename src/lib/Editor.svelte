@@ -1,7 +1,6 @@
 <script>
   import { onMount } from 'svelte'
   import { markdownToHtml, htmlToMarkdown, download } from './markdownUtils'
-  import { localFonts } from './fonts.js'
   import Prism from 'prismjs'
   import 'prismjs/components/prism-markup'
   import 'prismjs/components/prism-css'
@@ -22,10 +21,20 @@
   const themes = ['light', 'nord', 'dark', 'oled', 'sepia', 'taiga']
   const themeColors = { light: '#fafafa', nord: '#2e3440', dark: '#1c1c1e', oled: '#000', sepia: '#f4ecd8', taiga: '#141f1a' }
 
-  // Locally bundled fonts via Fontsource (no CDN needed)
-  const googleFontsList = localFonts
-  let fontsMetaFetched = true
-  let fontsMetaLoading = false
+  // Locally bundled fonts via Fontsource — list must match imports in main.js
+  const googleFontsList = [
+    'Abril Fatface','Bebas Neue','Bitter','Caveat','Comfortaa',
+    'Cormorant Garamond','Cousine','Courier Prime','Crimson Pro',
+    'Dancing Script','DM Mono','DM Sans','EB Garamond','Fira Code',
+    'Figtree','IBM Plex Mono','Inconsolata','Instrument Sans','Instrument Serif',
+    'Inter','JetBrains Mono','Jost','Karla','Lato','Libre Baskerville',
+    'Lora','Manrope','Merriweather','Montserrat','Mulish',
+    'Nunito','Open Sans','Oswald','Outfit','Pacifico','Patrick Hand',
+    'Permanent Marker','Playfair Display','Plus Jakarta Sans','Poppins',
+    'Quicksand','Raleway','Righteous','Roboto','Roboto Mono',
+    'Source Code Pro','Source Serif 4','Space Grotesk','Space Mono',
+    'Work Sans',
+  ].sort((a, b) => a.localeCompare(b))
 
   let editorEl = $state(null)
   let fontListEl = $state(null)
