@@ -104,6 +104,7 @@ function nodeToMd(node) {
     case 'strong': case 'b': { const t = text(); return t ? `**${t}**` : '' }
     case 'em':     case 'i': { const t = text(); return t ? `*${t}*` : '' }
     case 'del': case 's': case 'strike': { const t = text(); return t ? `~~${t}~~` : '' }
+    case 'u': { const t = kids(); return t ? `<u>${t}</u>` : '' }
     case 'h1': return `# ${text()}\n`
     case 'h2': return `## ${text()}\n`
     case 'h3': return `### ${text()}\n`

@@ -354,9 +354,10 @@
     showSelBar = true
   }
 
-  function selBarBold()   { document.execCommand('bold');          syncContent() }
-  function selBarItalic() { document.execCommand('italic');        syncContent() }
-  function selBarStrike() { document.execCommand('strikeThrough'); syncContent() }
+  function selBarBold()      { document.execCommand('bold');          syncContent() }
+  function selBarItalic()   { document.execCommand('italic');        syncContent() }
+  function selBarStrike()   { document.execCommand('strikeThrough'); syncContent() }
+  function selBarUnderline(){ document.execCommand('underline');     syncContent() }
   function selBarCode() {
     const sel = window.getSelection()
     if (!sel?.rangeCount) return
@@ -544,13 +545,16 @@
         syncContent(); return
       }
 
-      // Detect --- → divider
+      // Detect --- → divider (robust: handles null block and br siblings)
       const block = getContainingBlock(startNode)
-      if (block && block.textContent.trim() === '---') {
+      const hrTarget = block
+        ?? (startNode?.nodeType === 3 && startNode.parentElement === editorEl ? null : startNode?.parentElement)
+        ?? (startNode?.nodeType === 3 ? startNode : null)
+      if (hrTarget && /^-{3,}$/.test(hrTarget.textContent?.trim() ?? '')) {
         e.preventDefault()
         const hr = document.createElement('hr')
-        const p = document.createElement('p'); p.innerHTML = '<br>'
-        block.replaceWith(hr); hr.after(p)
+        const p  = document.createElement('p'); p.innerHTML = '<br>'
+        hrTarget.replaceWith(hr); hr.after(p)
         const r = document.createRange()
         r.setStart(p, 0); r.collapse(true)
         sel.removeAllRanges(); sel.addRange(r)
@@ -682,8 +686,9 @@
       document.execCommand('insertHTML', false, '\u00a0\u00a0')
       return
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); document.execCommand('bold');   syncContent(); return }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'i') { e.preventDefault(); document.execCommand('italic'); syncContent(); return }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); document.execCommand('bold');      syncContent(); return }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'i') { e.preventDefault(); document.execCommand('italic');    syncContent(); return }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'u') { e.preventDefault(); document.execCommand('underline'); syncContent(); return }
     if ((e.metaKey || e.ctrlKey) && e.key === 'h') { e.preventDefault(); execFormat('h2'); return }
     if (e.key === 'Escape') closeAll()
   }
@@ -957,10 +962,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
   {:else}
-    <button class="sel-btn"            onclick={selBarBold}     title="Bold"><b>B</b></button>
-    <button class="sel-btn sel-italic" onclick={selBarItalic}   title="Italic"><i>I</i></button>
-    <button class="sel-btn sel-strike" onclick={selBarStrike}   title="Strikethrough"><s>S</s></button>
-    <button class="sel-btn sel-mono"   onclick={selBarCode}     title="Inline code">{'<>'}</button>
+    <button class="sel-btn"               onclick={selBarBold}      title="Bold"><b>B</b></button>
+    <button class="sel-btn sel-italic"   onclick={selBarItalic}   title="Italic"><i>I</i></button>
+    <button class="sel-btn sel-under"    onclick={selBarUnderline} title="Underline (⌘U)"><u>U</u></button>
+    <button class="sel-btn sel-strike"   onclick={selBarStrike}    title="Strikethrough"><s>S</s></button>
+    <button class="sel-btn sel-mono"     onclick={selBarCode}      title="Inline code">{'<>'}</button>
     <div class="sel-divider"></div>
     <button class="sel-btn" onclick={selBarOpenLink} title="Link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>

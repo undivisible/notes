@@ -194,6 +194,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-1);color:va
 .sel-btn.sel-italic i{font-style:italic;font-family:Georgia,serif}
 .sel-btn.sel-mono{font-family:monospace;font-size:.8rem;letter-spacing:-.02em}
 .sel-btn.sel-strike s{text-decoration:line-through}
+.sel-btn.sel-under u{text-decoration:underline}
 .sel-divider{width:1px;height:1.2rem;background:var(--border);margin:0 .15rem;flex-shrink:0}
 .sel-link-input{
   width:180px;padding:.2rem .45rem;
