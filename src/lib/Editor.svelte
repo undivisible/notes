@@ -121,6 +121,38 @@
   let renamingTabId = $state(null);
   let renameVal = $state("");
   let renameInputEl = $state(null);
+  let importInputEl = $state(null);
+
+  const extensionLanguages = {
+    js: "javascript",
+    jsx: "javascript",
+    mjs: "javascript",
+    cjs: "javascript",
+    ts: "typescript",
+    tsx: "typescript",
+    py: "python",
+    html: "html",
+    htm: "html",
+    css: "css",
+    json: "json",
+    sh: "bash",
+    bash: "bash",
+    zsh: "bash",
+    rs: "rust",
+    go: "go",
+    java: "java",
+    sql: "sql",
+    yml: "yaml",
+    yaml: "yaml",
+    c: "c",
+    h: "c",
+    cpp: "cpp",
+    cc: "cpp",
+    cxx: "cpp",
+    hpp: "cpp",
+    xml: "markup",
+    svg: "markup",
+  };
 
   function tabDisplayTitle(tab) {
     if (tab.title) return tab.title;
@@ -134,6 +166,45 @@
       .trim()
       .slice(0, 28);
     return first || "Untitled";
+  }
+
+  function activeTab() {
+    return tabs.find((tab) => tab.id === activeTabId);
+  }
+
+  function activeFileName(fallbackExtension = "md") {
+    const title = activeTab()?.title?.trim();
+    if (title) return title;
+    return `notes-${Date.now()}.${fallbackExtension}`;
+  }
+
+  function codeLangForTitle(title) {
+    const match = title
+      .trim()
+      .toLowerCase()
+      .match(/\.([a-z0-9]+)$/);
+    return match ? extensionLanguages[match[1]] || null : null;
+  }
+
+  function activeCodeLang() {
+    return codeLangForTitle(activeTab()?.title || "");
+  }
+
+  function isCodeDocument() {
+    return Boolean(activeCodeLang());
+  }
+
+  function renderCodeDocument(code, lang) {
+    if (!editorEl) return;
+    const pre = document.createElement("pre");
+    pre.className = "code-document-pre";
+    if (lang) pre.setAttribute("data-lang", lang);
+    const codeEl = document.createElement("code");
+    if (lang) codeEl.className = `language-${lang}`;
+    codeEl.textContent = code || "\n";
+    pre.appendChild(codeEl);
+    editorEl.replaceChildren(pre);
+    Prism.highlightElement(codeEl);
   }
 
   function loadTabs() {
@@ -162,6 +233,9 @@
   }
 
   function activeMarkdown() {
+    if (isCodeDocument()) {
+      return editorEl?.querySelector("pre code")?.textContent || "";
+    }
     return htmlToMarkdown(editorEl?.innerHTML || "");
   }
 
@@ -170,7 +244,12 @@
     content = saved;
     isEmpty = saved.trim() === "";
     if (editorEl) {
-      editorEl.innerHTML = saved ? markdownToHtml(saved) : "";
+      const lang = activeCodeLang();
+      if (lang) {
+        renderCodeDocument(saved, lang);
+      } else {
+        editorEl.innerHTML = saved ? markdownToHtml(saved) : "";
+      }
       editorEl.style.fontFamily = currentFont;
       scheduleHighlight();
     }
@@ -227,11 +306,15 @@
 
   function finishRename() {
     if (!renamingTabId) return;
+    if (renamingTabId === activeTabId) {
+      localStorage.setItem(tabKey(activeTabId), activeMarkdown());
+    }
     tabs = tabs.map((t) =>
       t.id === renamingTabId ? { ...t, title: renameVal.trim() } : t,
     );
     renamingTabId = null;
     _saveTabs();
+    if (activeTabId) _loadTabContent(activeTabId);
   }
 
   // ── Slash command menu ──
@@ -488,7 +571,7 @@
 
   function syncContent() {
     if (!editorEl) return;
-    content = htmlToMarkdown(editorEl.innerHTML);
+    content = activeMarkdown();
     isEmpty = content.trim() === "";
     debouncedSave(content);
     updateCounts(content);
@@ -695,6 +778,41 @@
     return el && el !== editorEl ? el : null;
   }
 
+  function ensureContainingBlock(range) {
+    const node = range?.startContainer;
+    const block = getContainingBlock(node);
+    if (block) return block;
+    if (!editorEl || !node) return null;
+    if (node.nodeType === 3 && node.parentElement === editorEl) {
+      const offset = range.startOffset;
+      const p = document.createElement("p");
+      node.replaceWith(p);
+      p.appendChild(node);
+      const r = document.createRange();
+      r.setStart(node, Math.min(offset, node.textContent.length));
+      r.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+      return p;
+    }
+    if (node === editorEl) {
+      const p = document.createElement("p");
+      p.innerHTML = "<br>";
+      editorEl.appendChild(p);
+      return p;
+    }
+    return null;
+  }
+
+  function currentSlashQuery() {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount || !slashBlock) return null;
+    const text = slashBlock.textContent ?? "";
+    const idx = text.lastIndexOf("/");
+    return idx === -1 ? null : text.slice(idx + 1);
+  }
+
   // ── Inline markdown shortcuts: **bold**, *italic*, `code` ──
   function applyInlineFormat(textNode, matchStart, matchEnd, tag, content) {
     const parent = textNode.parentNode;
@@ -886,13 +1004,12 @@
   // ── Input handler ──
   function handleInput() {
     // Track slash query if menu is open
-    if (showSlash && slashBlock) {
-      const text = slashBlock.textContent ?? "";
-      const idx = text.lastIndexOf("/");
-      if (idx === -1) {
+    if (showSlash) {
+      const nextQuery = currentSlashQuery();
+      if (nextQuery === null) {
         showSlash = false;
       } else {
-        slashQuery = text.slice(idx + 1);
+        slashQuery = nextQuery;
         slashIndex = 0;
       }
     }
@@ -909,7 +1026,7 @@
     if (!block) return;
 
     // Clear the /query text from the block
-    if (block !== editorEl) block.innerHTML = "<br>";
+    block.innerHTML = "<br>";
 
     const sel = window.getSelection();
     function place(el) {
@@ -965,6 +1082,23 @@
     const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
     const startNode = range?.startContainer;
 
+    if (isCodeDocument()) {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        document.execCommand("insertText", false, "  ");
+        syncContent();
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        document.execCommand("insertText", false, "\n");
+        syncContent();
+        return;
+      }
+      if (e.key === "Escape") closeAll();
+      return;
+    }
+
     // ── Slash menu navigation ──
     if (showSlash && filteredCmds.length) {
       if (e.key === "ArrowDown") {
@@ -994,12 +1128,13 @@
       setTimeout(() => {
         const s = window.getSelection();
         if (!s?.rangeCount) return;
-        const rect = s.getRangeAt(0).getBoundingClientRect();
+        const range = s.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
         slashPos = { top: rect.bottom + 6, left: rect.left };
-        slashBlock = getContainingBlock(s.getRangeAt(0).startContainer) ?? null;
+        slashBlock = ensureContainingBlock(range);
         slashQuery = "";
         slashIndex = 0;
-        showSlash = true;
+        showSlash = Boolean(slashBlock);
       }, 0);
     }
 
@@ -1215,17 +1350,19 @@
         return;
       }
 
-      if (before === "-" || before === "*") {
+      if (before === "-" || before === "*" || /^\d+\.$/.test(before)) {
         e.preventDefault();
-        const ul = document.createElement("ul");
+        const list = document.createElement(
+          /^\d+\.$/.test(before) ? "ol" : "ul",
+        );
         const li = document.createElement("li");
         li.innerHTML = "<br>";
-        ul.appendChild(li);
-        const block = getContainingBlock(startNode);
+        list.appendChild(li);
+        const block = ensureContainingBlock(range);
         if (block) {
-          block.replaceWith(ul);
+          block.replaceWith(list);
         } else if (startNode.parentElement === editorEl) {
-          startNode.replaceWith(ul);
+          startNode.replaceWith(list);
         }
         const r = document.createRange();
         r.setStart(li, 0);
@@ -1344,8 +1481,10 @@
       const raw = codeBlock.textContent;
       codeBlock.textContent = raw;
       const pre = codeBlock.closest("pre");
-      if (pre && !pre.getAttribute("data-lang")) {
-        const detected = detectLanguage(raw);
+      if (pre) {
+        const detected = pre.classList.contains("code-document-pre")
+          ? activeCodeLang()
+          : detectLanguage(raw);
         if (detected) {
           pre.setAttribute("data-lang", detected);
           codeBlock.className = `language-${detected}`;
@@ -1458,14 +1597,17 @@
 
   function exportFormat(type) {
     showExport = false;
-    const c = content || "";
+    const c = activeMarkdown();
+    const codeDoc = isCodeDocument();
     if (type === "md") {
       download(
-        new Blob([c], { type: "text/markdown" }),
-        `notes-${Date.now()}.md`,
+        new Blob([c], {
+          type: codeDoc ? "text/plain" : "text/markdown",
+        }),
+        activeFileName(codeDoc ? "txt" : "md"),
       );
     } else if (type === "html") {
-      const h = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:ui-monospace,monospace;max-width:800px;margin:40px auto;padding:20px;line-height:1.8}pre{background:#f5f5f5;padding:16px;border-radius:8px;overflow-x:auto}code{background:#eee;padding:2px 6px;border-radius:4px}</style></head><body>${markdownToHtml(c)}</body></html>`;
+      const h = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:ui-monospace,monospace;max-width:800px;margin:40px auto;padding:20px;line-height:1.8}pre{background:#f5f5f5;padding:16px;border-radius:8px;overflow-x:auto}code{background:#eee;padding:2px 6px;border-radius:4px}</style></head><body>${markdownToHtml(codeDoc ? "```" + activeCodeLang() + "\n" + c + "\n```" : c)}</body></html>`;
       download(
         new Blob([h], { type: "text/html" }),
         `notes-${Date.now()}.html`,
@@ -1473,7 +1615,7 @@
     } else if (type === "pdf") {
       const pw = window.open("", "_blank");
       pw.document.write(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><style>@media print{@page{size:A4;margin:2cm}body{font-family:ui-monospace,monospace}}</style></head><body>${markdownToHtml(c)}<script>print();close()</scr` +
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><style>@media print{@page{size:A4;margin:2cm}body{font-family:ui-monospace,monospace}}</style></head><body>${markdownToHtml(codeDoc ? "```" + activeCodeLang() + "\n" + c + "\n```" : c)}<script>print();close()</scr` +
           `ipt></body></html>`,
       );
       pw.document.close();
@@ -1482,9 +1624,25 @@
 
   function copyDownload() {
     download(
-      new Blob([content || ""], { type: "text/markdown" }),
-      `notes-${Date.now()}.md`,
+      new Blob([activeMarkdown()], {
+        type: isCodeDocument() ? "text/plain" : "text/markdown",
+      }),
+      activeFileName(isCodeDocument() ? "txt" : "md"),
     );
+  }
+
+  async function importDocument(file) {
+    if (!file) return;
+    localStorage.setItem(tabKey(activeTabId), activeMarkdown());
+    const text = await file.text();
+    const id = newTabId();
+    tabs = [...tabs, { id, title: file.name }];
+    activeTabId = id;
+    localStorage.setItem(tabKey(id), text);
+    localStorage.setItem("notes-active-tab", id);
+    _saveTabs();
+    _loadTabContent(id);
+    closeAll();
   }
 
   function currentFontName() {
@@ -1804,6 +1962,22 @@
         </button>
         {#if showExport}
           <div class="popout export-popout">
+            <button
+              class="export-item"
+              onclick={() => {
+                showExport = false;
+                importInputEl?.click();
+              }}
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+                  points="17 8 12 3 7 8"
+                /><line x1="12" y1="3" x2="12" y2="15" /></svg
+              >Import</button
+            >
             <button class="export-item" onclick={() => exportFormat("md")}
               ><svg
                 viewBox="0 0 24 24"
@@ -1853,6 +2027,15 @@
         >
         <span class="tooltip">Download .md</span>
       </button>
+      <input
+        bind:this={importInputEl}
+        type="file"
+        class="import-input"
+        onchange={(e) => {
+          importDocument(e.currentTarget.files?.[0]);
+          e.currentTarget.value = "";
+        }}
+      />
     </div>
 
     <div class="sidebar-footer">
@@ -1955,7 +2138,9 @@
         role="textbox"
         aria-multiline="true"
         tabindex="0"
-        class="notion-editor {isEmpty ? 'is-empty' : ''}"
+        class="notion-editor {isEmpty ? 'is-empty' : ''} {isCodeDocument()
+          ? 'code-mode'
+          : ''}"
         oninput={handleInput}
         onkeydown={handleKeydown}
         onpaste={handlePaste}

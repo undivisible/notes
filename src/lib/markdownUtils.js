@@ -68,12 +68,20 @@ export function markdownToHtml(markdown) {
   for (const line of lines) {
     const trimmed = line.trim();
     if (/^[-*+] /.test(trimmed)) {
+      if (inOl) {
+        result.push("</ol>");
+        inOl = false;
+      }
       if (!inUl) {
         result.push("<ul>");
         inUl = true;
       }
       result.push("<li>" + trimmed.substring(2) + "</li>");
     } else if (/^\d+\. /.test(trimmed)) {
+      if (inUl) {
+        result.push("</ul>");
+        inUl = false;
+      }
       if (!inOl) {
         result.push("<ol>");
         inOl = true;

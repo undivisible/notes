@@ -325,6 +325,9 @@
     color: var(--text-2);
     flex-shrink: 0;
   }
+  .import-input {
+    display: none;
+  }
 
   /* ── Editor ── */
   .editor-area {
@@ -565,6 +568,21 @@
     border-bottom: 1px solid var(--border);
     letter-spacing: 0.05em;
     text-transform: uppercase;
+  }
+  .notion-editor.code-mode {
+    max-width: none;
+    padding: 1.25rem 1.5rem 12rem;
+  }
+  .notion-editor.code-mode .code-document-pre {
+    min-height: calc(100vh - 5rem);
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+  }
+  .notion-editor.code-mode .code-document-pre code {
+    min-height: inherit;
+    padding: 1.25rem;
   }
 
   /* Prism tokens */
