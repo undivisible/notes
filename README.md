@@ -15,8 +15,8 @@ A distraction-free, Notion-style markdown editor with auto-save, multiple themes
 ## Quick Start
 
 ```bash
-npm install
-npm run dev
+bun i
+bun dev
 ```
 
 Open http://localhost:5173
@@ -56,11 +56,11 @@ src/
 ## Build
 
 ```bash
-npm run build
+bun build
 ```
 
 Output is in the `dist/` directory.
 
 ## License
 
-MIT
+MPL-2.0
