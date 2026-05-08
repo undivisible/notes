@@ -23,14 +23,14 @@ Open http://localhost:5173
 
 ## Commands
 
-- **Cmd/Ctrl + K** — Open command menu
+- **Cmd/Ctrl + K** — Search open documents
 - **Tab** — Insert 2-space indent
 - **Export button** — Download as Markdown, HTML, or PDF
 - **Preview button** — Toggle live markdown preview
 
 ## Keyboard Shortcuts
 
-- Press **Cmd/Ctrl + K** to open the floating command menu
+- Press **Cmd/Ctrl + K** to search documents you have open
 - Press **Tab** to insert 2-space indentation in the editor
 - Click the icons on the left sidebar for menu, preview, copy, and export
 

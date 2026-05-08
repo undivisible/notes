@@ -6,16 +6,27 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "lint": "eslint .",
+    "typecheck": "svelte-check --tsconfig ./jsconfig.json",
+    "test": "bun run build",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@iconify/svelte": "^5.2.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.2.4",
     "autoprefixer": "^10.5.0",
+    "eslint": "^10.3.0",
+    "eslint-plugin-svelte": "^3.17.1",
     "lucide-svelte": "^1.0.1",
     "postcss": "^8.5.12",
+    "prettier": "^3.8.3",
+    "prettier-plugin-svelte": "^3.5.1",
     "svelte": "^5.55.4",
+    "svelte-check": "^4.4.8",
     "svelte-preprocess": "^6.0.3",
     "tailwindcss": "^4.2.4",
     "vite": "^8.0.10"
