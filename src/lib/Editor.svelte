@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { markdownToHtml, htmlToMarkdown, download } from "./markdownUtils";
   import Prism from "prismjs";
   import "prismjs/components/prism-markup";
@@ -17,43 +17,71 @@
   import "prismjs/components/prism-yaml";
   import "prismjs/components/prism-c";
   import "prismjs/components/prism-cpp";
-
-  const optionalPrismLoaders = [
-    () => import("prismjs/components/prism-jsx"),
-    () => import("prismjs/components/prism-tsx"),
-    () => import("prismjs/components/prism-ruby"),
-    () => import("prismjs/components/prism-php"),
-    () => import("prismjs/components/prism-swift"),
-    () => import("prismjs/components/prism-kotlin"),
-    () => import("prismjs/components/prism-scala"),
-    () => import("prismjs/components/prism-dart"),
-    () => import("prismjs/components/prism-lua"),
-    () => import("prismjs/components/prism-perl"),
-    () => import("prismjs/components/prism-r"),
-    () => import("prismjs/components/prism-objectivec"),
-    () => import("prismjs/components/prism-toml"),
-    () => import("prismjs/components/prism-ini"),
-    () => import("prismjs/components/prism-docker"),
-    () => import("prismjs/components/prism-makefile"),
-    () => import("prismjs/components/prism-nginx"),
-    () => import("prismjs/components/prism-powershell"),
-    () => import("prismjs/components/prism-csv"),
-    () => import("prismjs/components/prism-markdown"),
-    () => import("prismjs/components/prism-graphql"),
-    () => import("prismjs/components/prism-diff"),
-    () => import("prismjs/components/prism-wasm"),
-  ];
-
-  async function loadOptionalPrismComponents() {
-    for (const load of optionalPrismLoaders) {
-      try {
-        await load();
-      } catch (error) {
-        console.warn("Failed to load optional Prism language", error);
-      }
-    }
-    scheduleHighlight();
-  }
+  import "prismjs/components/prism-jsx";
+  import "prismjs/components/prism-tsx";
+  import "prismjs/components/prism-ruby";
+  import "prismjs/components/prism-php";
+  import "prismjs/components/prism-swift";
+  import "prismjs/components/prism-kotlin";
+  import "prismjs/components/prism-scala";
+  import "prismjs/components/prism-dart";
+  import "prismjs/components/prism-lua";
+  import "prismjs/components/prism-perl";
+  import "prismjs/components/prism-r";
+  import "prismjs/components/prism-objectivec";
+  import "prismjs/components/prism-toml";
+  import "prismjs/components/prism-ini";
+  import "prismjs/components/prism-docker";
+  import "prismjs/components/prism-makefile";
+  import "prismjs/components/prism-nginx";
+  import "prismjs/components/prism-powershell";
+  import "prismjs/components/prism-csv";
+  import "prismjs/components/prism-markdown";
+  import "prismjs/components/prism-graphql";
+  import "prismjs/components/prism-diff";
+  import "prismjs/components/prism-wasm";
+  import { Compartment, EditorState } from "@codemirror/state";
+  import {
+    bracketMatching,
+    codeFolding,
+    defaultHighlightStyle,
+    foldGutter,
+    foldKeymap,
+    indentOnInput,
+    syntaxHighlighting,
+  } from "@codemirror/language";
+  import { history, historyKeymap } from "@codemirror/commands";
+  import { searchKeymap } from "@codemirror/search";
+  import {
+    autocompletion,
+    closeBrackets,
+    closeBracketsKeymap,
+    completionKeymap,
+  } from "@codemirror/autocomplete";
+  import {
+    EditorView,
+    drawSelection,
+    dropCursor,
+    highlightActiveLine,
+    highlightActiveLineGutter,
+    keymap,
+    lineNumbers,
+  } from "@codemirror/view";
+  import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+  import { javascript } from "@codemirror/lang-javascript";
+  import { html } from "@codemirror/lang-html";
+  import { css } from "@codemirror/lang-css";
+  import { json } from "@codemirror/lang-json";
+  import { markdown } from "@codemirror/lang-markdown";
+  import { python } from "@codemirror/lang-python";
+  import { sql } from "@codemirror/lang-sql";
+  import { xml } from "@codemirror/lang-xml";
+  import { yaml } from "@codemirror/lang-yaml";
+  import { rust } from "@codemirror/lang-rust";
+  import { go } from "@codemirror/lang-go";
+  import { java } from "@codemirror/lang-java";
+  import { php } from "@codemirror/lang-php";
+  import { cpp } from "@codemirror/lang-cpp";
 
   const themes = ["light", "nord", "dark", "oled", "sepia", "taiga"];
   const themeColors = {
@@ -228,6 +256,10 @@
     hpp: "cpp",
     xml: "markup",
     svg: "markup",
+    vue: "markup",
+    svelte: "markup",
+    astro: "markup",
+    txt: "text",
   };
 
   const filenameLanguages = {
@@ -260,6 +292,12 @@
     return `notes-${Date.now()}.${fallbackExtension}`;
   }
 
+  function activeFileExtension() {
+    const title = activeTab()?.title?.trim().toLowerCase() || "";
+    const match = title.match(/\.([a-z0-9]+)$/);
+    return match ? match[1] : null;
+  }
+
   function codeLangForTitle(title) {
     const normalized = title.trim().toLowerCase();
     if (filenameLanguages[normalized]) return filenameLanguages[normalized];
@@ -275,17 +313,231 @@
     return Boolean(activeCodeLang());
   }
 
+  const langAliases = {
+    auto: "auto",
+    text: "none",
+    plaintext: "none",
+    shell: "bash",
+    sh: "bash",
+    zsh: "bash",
+    ps: "powershell",
+    yml: "yaml",
+    xml: "markup",
+    html: "markup",
+    md: "markdown",
+    objectivec: "objectivec",
+    "obj-c": "objectivec",
+    csharp: "csharp",
+    "c#": "csharp",
+  };
+
+  const langOptions = [
+    { id: "auto", label: "Auto-detect", aliases: ["auto", "detect"] },
+    { id: "none", label: "Plain Text", aliases: ["text", "plain"] },
+    { id: "javascript", label: "JavaScript", aliases: ["js", "node"] },
+    { id: "jsx", label: "JSX", aliases: ["react"] },
+    { id: "typescript", label: "TypeScript", aliases: ["ts"] },
+    { id: "tsx", label: "TSX", aliases: ["react ts"] },
+    { id: "python", label: "Python", aliases: ["py"] },
+    { id: "ruby", label: "Ruby", aliases: ["rb"] },
+    { id: "php", label: "PHP", aliases: [] },
+    { id: "swift", label: "Swift", aliases: [] },
+    { id: "kotlin", label: "Kotlin", aliases: ["kt"] },
+    { id: "scala", label: "Scala", aliases: [] },
+    { id: "dart", label: "Dart", aliases: [] },
+    { id: "lua", label: "Lua", aliases: [] },
+    { id: "perl", label: "Perl", aliases: ["pl"] },
+    { id: "r", label: "R", aliases: [] },
+    { id: "objectivec", label: "Objective-C", aliases: ["objc"] },
+    { id: "c", label: "C", aliases: [] },
+    { id: "cpp", label: "C++", aliases: [] },
+    { id: "rust", label: "Rust", aliases: ["rs"] },
+    { id: "go", label: "Go", aliases: ["golang"] },
+    { id: "java", label: "Java", aliases: [] },
+    { id: "sql", label: "SQL", aliases: ["postgres", "mysql"] },
+    { id: "json", label: "JSON", aliases: [] },
+    { id: "yaml", label: "YAML", aliases: ["yml"] },
+    { id: "toml", label: "TOML", aliases: [] },
+    { id: "ini", label: "INI", aliases: ["config"] },
+    { id: "bash", label: "Bash / Shell", aliases: ["sh", "zsh"] },
+    { id: "powershell", label: "PowerShell", aliases: ["ps1"] },
+    { id: "docker", label: "Dockerfile", aliases: ["container"] },
+    { id: "makefile", label: "Makefile", aliases: ["make"] },
+    { id: "nginx", label: "Nginx", aliases: [] },
+    { id: "graphql", label: "GraphQL", aliases: ["gql"] },
+    { id: "markdown", label: "Markdown", aliases: ["md"] },
+    { id: "diff", label: "Diff / Patch", aliases: ["patch"] },
+    { id: "csv", label: "CSV", aliases: [] },
+    { id: "wasm", label: "WebAssembly", aliases: ["wat"] },
+    { id: "css", label: "CSS", aliases: [] },
+    { id: "markup", label: "HTML / XML / SVG", aliases: ["html", "xml", "svg"] },
+  ];
+
+  let langSearch = $state("");
+  let langSearchEl = $state(null);
+  let filteredLangOptions = $derived.by(() => {
+    const q = langSearch.trim().toLowerCase();
+    if (!q) return langOptions;
+    return langOptions.filter((option) => {
+      const optionText = [
+        option.id,
+        option.label.toLowerCase(),
+        ...(option.aliases || []),
+      ].join(" ");
+      return optionText.includes(q);
+    });
+  });
+
+  let codeView = null;
+  const languageCompartment = new Compartment();
+  const editableCompartment = new Compartment();
+  let suppressCodeSync = false;
+
+  function codeLanguageExtension(lang) {
+    switch (normalizeLang(lang)) {
+      case "javascript":
+        return javascript({ jsx: false, typescript: false });
+      case "jsx":
+        return javascript({ jsx: true, typescript: false });
+      case "typescript":
+        return javascript({ jsx: false, typescript: true });
+      case "tsx":
+        return javascript({ jsx: true, typescript: true });
+      case "python":
+        return python();
+      case "html":
+      case "markup":
+        return html({ autoCloseTags: true });
+      case "css":
+        return css();
+      case "json":
+        return json();
+      case "sql":
+        return sql();
+      case "yaml":
+        return yaml();
+      case "markdown":
+        return markdown();
+      case "rust":
+        return rust();
+      case "go":
+        return go();
+      case "java":
+        return java();
+      case "php":
+        return php();
+      case "c":
+      case "cpp":
+        return cpp();
+      case "xml":
+        return xml();
+      default:
+        return [];
+    }
+  }
+
+  function readCodeDocument() {
+    return codeView?.state.doc.toString() || "";
+  }
+
+  function destroyCodeEditor() {
+    if (!codeView) return;
+    codeView.destroy();
+    codeView = null;
+  }
+
   function renderCodeDocument(code, lang) {
     if (!editorEl) return;
-    const pre = document.createElement("pre");
-    pre.className = "code-document-pre";
-    if (lang) pre.setAttribute("data-lang", lang);
-    const codeEl = document.createElement("code");
-    if (lang) codeEl.className = `language-${lang}`;
-    codeEl.textContent = code || "\n";
-    pre.appendChild(codeEl);
-    editorEl.replaceChildren(pre);
-    Prism.highlightElement(codeEl);
+    destroyCodeEditor();
+    editorEl.replaceChildren();
+    const start = code ?? "";
+    const cmExtensions = [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      history(),
+      drawSelection(),
+      dropCursor(),
+      indentOnInput(),
+      bracketMatching(),
+      closeBrackets(),
+      autocompletion(),
+      highlightActiveLine(),
+      codeFolding(),
+      foldGutter(),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      keymap.of([
+        indentWithTab,
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...closeBracketsKeymap,
+        ...completionKeymap,
+        ...searchKeymap,
+      ]),
+      languageCompartment.of(codeLanguageExtension(lang)),
+      editableCompartment.of(EditorView.editable.of(true)),
+      EditorView.lineWrapping,
+      EditorView.theme({
+        "&": {
+          height: "100%",
+          backgroundColor: "transparent",
+          color: "var(--text-1)",
+          fontFamily:
+            "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace",
+          fontSize: "0.92rem",
+        },
+        ".cm-scroller": {
+          overflow: "auto",
+          minHeight: "calc(100vh - 5rem)",
+          paddingBottom: "12rem",
+        },
+        ".cm-content": {
+          minHeight: "calc(100vh - 5rem)",
+          padding: "0 2rem 12rem",
+          lineHeight: "1.6",
+        },
+        ".cm-gutters": {
+          backgroundColor: "transparent",
+          color: "var(--text-3)",
+          border: "none",
+          paddingLeft: "0.4rem",
+          fontFamily:
+            "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace",
+          fontSize: "0.92rem",
+          lineHeight: "1.6",
+        },
+        ".cm-line": {
+          padding: "0",
+          lineHeight: "1.6",
+        },
+        ".cm-gutterElement": {
+          lineHeight: "1.6",
+        },
+        ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)" },
+        ".cm-activeLineGutter": {
+          backgroundColor: "color-mix(in srgb, var(--accent) 16%, transparent)",
+          color: "var(--text-1)",
+        },
+        ".cm-selectionBackground, .cm-content ::selection": {
+          backgroundColor: "color-mix(in srgb, var(--accent) 34%, transparent) !important",
+        },
+        ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--accent)" },
+      }),
+      EditorView.updateListener.of((update) => {
+        if (!update.docChanged || suppressCodeSync) return;
+        const next = update.state.doc.toString();
+        content = next;
+        isEmpty = next.trim() === "";
+        debouncedSave(next);
+        updateCounts(next);
+      }),
+    ];
+    const state = EditorState.create({
+      doc: start,
+      extensions: cmExtensions,
+    });
+    codeView = new EditorView({ state, parent: editorEl });
+    updateCounts(start);
   }
 
   function loadTabs() {
@@ -315,7 +567,7 @@
 
   function activeMarkdown() {
     if (isCodeDocument()) {
-      return editorEl?.querySelector("pre code")?.textContent || "";
+      return readCodeDocument();
     }
     return htmlToMarkdown(editorEl?.innerHTML || "");
   }
@@ -329,10 +581,11 @@
       if (lang) {
         renderCodeDocument(saved, lang);
       } else {
+        destroyCodeEditor();
         editorEl.innerHTML = saved ? markdownToHtml(saved) : "";
+        scheduleHighlight();
       }
       editorEl.style.fontFamily = currentFont;
-      scheduleHighlight();
     }
     updateCounts(saved);
   }
@@ -354,6 +607,7 @@
     content = "";
     isEmpty = true;
     if (editorEl) {
+      destroyCodeEditor();
       editorEl.innerHTML = "";
       editorEl.focus();
     }
@@ -570,8 +824,6 @@
   }
 
   onMount(() => {
-    void loadOptionalPrismComponents();
-
     const savedFont = localStorage.getItem("notes-font") || currentFont;
     currentFont = savedFont;
     loadRecentFonts();
@@ -584,6 +836,10 @@
 
     loadTabs();
     _loadTabContent(activeTabId);
+  });
+
+  onDestroy(() => {
+    destroyCodeEditor();
   });
 
   let saveTimeout;
@@ -654,6 +910,13 @@
 
   function syncContent() {
     if (!editorEl) return;
+    if (isCodeDocument()) {
+      content = readCodeDocument();
+      isEmpty = content.trim() === "";
+      debouncedSave(content);
+      updateCounts(content);
+      return;
+    }
     content = activeMarkdown();
     isEmpty = content.trim() === "";
     debouncedSave(content);
@@ -662,28 +925,17 @@
   }
 
   // ── Language auto-detection ──
-  const langOptions = [
-    { id: "auto", label: "Auto-detect" },
-    { id: "javascript", label: "JavaScript" },
-    { id: "typescript", label: "TypeScript" },
-    { id: "python", label: "Python" },
-    { id: "html", label: "HTML" },
-    { id: "css", label: "CSS" },
-    { id: "json", label: "JSON" },
-    { id: "bash", label: "Bash / Shell" },
-    { id: "rust", label: "Rust" },
-    { id: "go", label: "Go" },
-    { id: "java", label: "Java" },
-    { id: "sql", label: "SQL" },
-    { id: "yaml", label: "YAML" },
-    { id: "c", label: "C" },
-    { id: "cpp", label: "C++" },
-    { id: "markup", label: "XML / SVG" },
-  ];
-
   let activePre = $state(null);
   let activePreRect = $state(null);
   let showLangPicker = $state(false);
+
+  $effect(() => {
+    if (showLangPicker) {
+      requestAnimationFrame(() => langSearchEl?.focus());
+    } else {
+      langSearch = "";
+    }
+  });
 
   function detectLanguage(code) {
     const t = code.trim();
@@ -799,10 +1051,16 @@
     return bestScore >= 1 ? best : null;
   }
 
+  function normalizeLang(langId) {
+    const normalized = (langId || "").toLowerCase().trim();
+    return langAliases[normalized] || normalized;
+  }
+
   function setCodeLang(langId) {
     if (!activePre) return;
+    const normalizedLang = normalizeLang(langId);
     const codeEl = activePre.querySelector("code");
-    if (langId === "auto") {
+    if (normalizedLang === "auto") {
       activePre.removeAttribute("data-lang");
       if (codeEl) {
         const detected = detectLanguage(codeEl.textContent);
@@ -813,11 +1071,14 @@
           codeEl.className = "";
         }
       }
+    } else if (normalizedLang === "none") {
+      activePre.removeAttribute("data-lang");
+      if (codeEl) codeEl.className = "";
     } else {
-      activePre.setAttribute("data-lang", langId);
-      if (codeEl) codeEl.className = `language-${langId}`;
+      activePre.setAttribute("data-lang", normalizedLang);
+      if (codeEl) codeEl.className = `language-${normalizedLang}`;
     }
-    if (codeEl) {
+    if (codeEl && normalizedLang !== "none") {
       codeEl.textContent = codeEl.textContent; // strip old Prism spans
       Prism.highlightElement(codeEl);
     }
@@ -835,21 +1096,60 @@
   function applyPrism() {
     if (!editorEl) return;
     const sel = window.getSelection();
+    const codeMode = isCodeDocument();
     editorEl.querySelectorAll("pre code").forEach((block) => {
-      // Skip the block where the cursor is currently typing
-      if (sel?.focusNode && block.contains(sel.focusNode)) return;
+      const isFocusedBlock = Boolean(sel?.focusNode && block.contains(sel.focusNode));
+      // Keep markdown editing stable by not re-highlighting the focused block.
+      // In full-page code mode, we do re-highlight and restore caret position.
+      if (!codeMode && isFocusedBlock) return;
       const pre = block.closest("pre");
       // Strip any existing Prism spans to re-highlight cleanly
       const raw = block.textContent;
-      block.textContent = raw;
-      if (!block.className) {
-        const lang = pre?.getAttribute("data-lang") || detectLanguage(raw);
-        if (lang) {
-          pre?.setAttribute("data-lang", lang);
-          block.className = `language-${lang}`;
+      let cursorOffset = null;
+      if (codeMode && isFocusedBlock && sel?.rangeCount) {
+        const range = sel.getRangeAt(0);
+        if (range.collapsed) {
+          const working = document.createRange();
+          working.selectNodeContents(block);
+          working.setEnd(range.startContainer, range.startOffset);
+          cursorOffset = working.toString().length;
         }
       }
-      Prism.highlightElement(block);
+      block.textContent = raw;
+      if (!block.className) {
+        const lang = normalizeLang(pre?.getAttribute("data-lang")) || detectLanguage(raw);
+        if (lang) {
+          pre?.setAttribute("data-lang", lang);
+          if (lang !== "none") block.className = `language-${lang}`;
+        }
+      }
+      if (block.className) Prism.highlightElement(block);
+      if (cursorOffset !== null) {
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        let remaining = cursorOffset;
+        let current = walker.nextNode();
+        let targetNode = null;
+        let targetOffset = 0;
+        while (current) {
+          const len = current.textContent.length;
+          if (remaining <= len) {
+            targetNode = current;
+            targetOffset = remaining;
+            break;
+          }
+          remaining -= len;
+          current = walker.nextNode();
+        }
+        if (!targetNode) {
+          targetNode = block;
+          targetOffset = block.childNodes.length;
+        }
+        const restored = document.createRange();
+        restored.setStart(targetNode, targetOffset);
+        restored.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(restored);
+      }
     });
   }
 
@@ -1166,18 +1466,6 @@
     const startNode = range?.startContainer;
 
     if (isCodeDocument()) {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        document.execCommand("insertText", false, "  ");
-        syncContent();
-        return;
-      }
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        document.execCommand("insertText", false, "\n");
-        syncContent();
-        return;
-      }
       if (e.key === "Escape") closeAll();
       return;
     }
@@ -1551,6 +1839,7 @@
   }
 
   function handlePaste(e) {
+    if (isCodeDocument()) return;
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
@@ -1579,6 +1868,7 @@
   }
 
   function handleEditorMouseOver(e) {
+    if (isCodeDocument()) return;
     const pre = e.target.closest?.("pre");
     if (pre && editorEl?.contains(pre)) {
       activePre = pre;
@@ -1587,6 +1877,7 @@
   }
 
   function handleEditorMouseLeave(e) {
+    if (isCodeDocument()) return;
     if (!e.relatedTarget?.closest?.(".code-toolbar")) {
       if (!showLangPicker) activePre = null;
     }
@@ -1600,6 +1891,11 @@
       showLangPicker = false;
       activePre = null;
     }
+  }
+
+  function updateToolbarPosition() {
+    if (!activePre) return;
+    activePreRect = activePre.getBoundingClientRect();
   }
 
   function execFormat(tag) {
@@ -1714,6 +2010,14 @@
     );
   }
 
+  function downloadTooltipLabel() {
+    if (isCodeDocument()) {
+      const ext = activeFileExtension() || "txt";
+      return `Download .${ext}`;
+    }
+    return "Download .md";
+  }
+
   async function importDocument(file) {
     if (!file) return;
     localStorage.setItem(tabKey(activeTabId), activeMarkdown());
@@ -1740,7 +2044,11 @@
     if (!e.target.closest(".popout-wrap") && !e.target.closest(".font-search"))
       closeAll();
     if (!e.target.closest(".slash-menu")) showSlash = false;
-    if (!e.target.closest(".code-toolbar") && !e.target.closest("pre")) {
+    if (
+      !isCodeDocument() &&
+      !e.target.closest(".code-toolbar") &&
+      !e.target.closest("pre")
+    ) {
       showLangPicker = false;
       activePre = null;
     }
@@ -1748,6 +2056,8 @@
       selBarLink = false;
     }
   }}
+  onscroll={updateToolbarPosition}
+  onresize={updateToolbarPosition}
 />
 
 <div class="wrap">
@@ -2098,7 +2408,11 @@
         {/if}
       </div>
 
-      <button class="sidebar-icon" onclick={copyDownload} title="Download .md">
+      <button
+        class="sidebar-icon"
+        onclick={copyDownload}
+        title={downloadTooltipLabel()}
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -2108,7 +2422,7 @@
             points="7 10 12 15 17 10"
           /><line x1="12" y1="15" x2="12" y2="3" /></svg
         >
-        <span class="tooltip">Download .md</span>
+        <span class="tooltip">{downloadTooltipLabel()}</span>
       </button>
       <input
         bind:this={importInputEl}
@@ -2217,7 +2531,7 @@
       <div
         id="noteEditor"
         bind:this={editorEl}
-        contenteditable="true"
+        contenteditable={!isCodeDocument()}
         role="textbox"
         aria-multiline="true"
         tabindex="0"
@@ -2231,7 +2545,9 @@
         onmouseover={handleEditorMouseOver}
         onfocus={handleEditorMouseOver}
         onmouseleave={handleEditorMouseLeave}
-        data-placeholder="Start typing… or type / for commands"
+        data-placeholder={isCodeDocument()
+          ? "Start typing code…"
+          : "Start typing… or type / for commands"}
       ></div>
     </div>
   </main>
@@ -2311,7 +2627,7 @@
   </div>
 {/if}
 
-{#if activePre && activePreRect}
+{#if !isCodeDocument() && activePre && activePreRect}
   <div
     class="code-toolbar"
     role="toolbar"
@@ -2339,7 +2655,21 @@
     </button>
     {#if showLangPicker}
       <div class="lang-dropdown">
-        {#each langOptions as opt}
+        <input
+          class="lang-search"
+          type="text"
+          placeholder="Search language…"
+          bind:value={langSearch}
+          bind:this={langSearchEl}
+          onmousedown={(e) => e.stopPropagation()}
+          onkeydown={(e) => {
+            if (e.key === "Escape") showLangPicker = false;
+          }}
+        />
+        {#if filteredLangOptions.length === 0}
+          <div class="lang-empty">No language found</div>
+        {/if}
+        {#each filteredLangOptions as opt}
           <button
             class="lang-option {(activePre.getAttribute('data-lang') ||
               'auto') === opt.id

@@ -335,6 +335,7 @@
     flex: 1;
     height: 100vh;
     @apply flex flex-col overflow-hidden;
+    min-width: 0;
   }
   .editor-scroll {
     @apply flex-1 overflow-y-auto min-h-0;
@@ -359,6 +360,9 @@
     height: 2.25rem;
     background: var(--bg-2);
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
   .tab-list {
     @apply flex items-stretch overflow-x-auto flex-1;
@@ -448,7 +452,7 @@
   }
 
   /* Blocks */
-  .notion-editor h1 {
+  .notion-editor:not(.code-mode) h1 {
     font-size: 2rem;
     font-weight: 700;
     margin: 1.5rem 0 0.5rem;
@@ -456,84 +460,84 @@
     padding-bottom: 0.4rem;
     line-height: 1.25;
   }
-  .notion-editor h2 {
+  .notion-editor:not(.code-mode) h2 {
     font-size: 1.5rem;
     font-weight: 700;
     margin: 1.25rem 0 0.4rem;
     line-height: 1.3;
   }
-  .notion-editor h3 {
+  .notion-editor:not(.code-mode) h3 {
     font-size: 1.2rem;
     font-weight: 700;
     margin: 1rem 0 0.4rem;
     line-height: 1.3;
   }
-  .notion-editor h4,
-  .notion-editor h5,
-  .notion-editor h6 {
+  .notion-editor:not(.code-mode) h4,
+  .notion-editor:not(.code-mode) h5,
+  .notion-editor:not(.code-mode) h6 {
     font-weight: 700;
     margin: 0.75rem 0 0.3rem;
   }
-  .notion-editor p,
-  .notion-editor div {
+  .notion-editor:not(.code-mode) p,
+  .notion-editor:not(.code-mode) div {
     margin-bottom: 0.1rem;
     min-height: 1.8em;
   }
-  .notion-editor ul,
-  .notion-editor ol {
+  .notion-editor:not(.code-mode) ul,
+  .notion-editor:not(.code-mode) ol {
     margin: 0.25rem 0 0.25rem 1.5rem;
     padding-left: 1.25rem;
   }
-  .notion-editor ul {
+  .notion-editor:not(.code-mode) ul {
     list-style-type: disc;
   }
-  .notion-editor ol {
+  .notion-editor:not(.code-mode) ol {
     list-style-type: decimal;
   }
-  .notion-editor li {
+  .notion-editor:not(.code-mode) li {
     margin-bottom: 0.1rem;
     display: list-item;
   }
-  .notion-editor blockquote {
+  .notion-editor:not(.code-mode) blockquote {
     border-left: 3px solid var(--accent);
     padding: 0.25rem 0 0.25rem 1rem;
     margin: 0.5rem 0;
     color: var(--text-2);
     font-style: italic;
   }
-  .notion-editor hr {
+  .notion-editor:not(.code-mode) hr {
     border: none;
     border-top: 1px solid var(--border);
     margin: 1.25rem 0;
   }
-  .notion-editor table {
+  .notion-editor:not(.code-mode) table {
     border-collapse: collapse;
     width: 100%;
     margin: 0.75rem 0;
   }
-  .notion-editor th,
-  .notion-editor td {
+  .notion-editor:not(.code-mode) th,
+  .notion-editor:not(.code-mode) td {
     border: 1px solid var(--border);
     padding: 0.4rem 0.75rem;
   }
-  .notion-editor th {
+  .notion-editor:not(.code-mode) th {
     background: var(--bg-3);
     font-weight: 700;
   }
-  .notion-editor a {
+  .notion-editor:not(.code-mode) a {
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
-  .notion-editor strong,
-  .notion-editor b {
+  .notion-editor:not(.code-mode) strong,
+  .notion-editor:not(.code-mode) b {
     font-weight: 700;
   }
-  .notion-editor em,
-  .notion-editor i {
+  .notion-editor:not(.code-mode) em,
+  .notion-editor:not(.code-mode) i {
     font-style: italic;
   }
-  .notion-editor code {
+  .notion-editor :not(pre) > code {
     font-family: var(--font-1);
     font-size: 0.875em;
     background: var(--code-bg);
@@ -574,7 +578,12 @@
   }
   .notion-editor.code-mode {
     max-width: none;
-    padding: 1.25rem 1.5rem 12rem;
+    padding: 0;
+    background: color-mix(in srgb, var(--bg-1) 92%, #000);
+  }
+  .notion-editor.code-mode::before {
+    top: 1.25rem;
+    left: 1.5rem;
   }
   .notion-editor.code-mode .code-document-pre {
     min-height: calc(100vh - 5rem);
@@ -583,9 +592,64 @@
     border: none;
     background: transparent;
   }
+  .notion-editor.code-mode .code-document-pre::before {
+    display: none;
+  }
   .notion-editor.code-mode .code-document-pre code {
     min-height: inherit;
-    padding: 1.25rem;
+    padding: 1.5rem 2rem 12rem;
+    font-size: 0.92rem;
+    tab-size: 2;
+  }
+  .notion-editor.code-mode .cm-editor {
+    height: 100%;
+    background: transparent;
+  }
+  .notion-editor.code-mode .cm-focused {
+    outline: none;
+  }
+  .notion-editor.code-mode .cm-scroller {
+    font-family:
+      "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas,
+      monospace;
+  }
+  .notion-editor.code-mode .cm-lineNumbers .cm-gutterElement {
+    min-width: 2.4rem;
+    opacity: 0.9;
+    text-align: right;
+    padding-right: 0.6rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .notion-editor.code-mode .cm-content,
+  .notion-editor.code-mode .cm-line,
+  .notion-editor.code-mode .cm-gutterElement {
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+  .notion-editor.code-mode .cm-foldGutter .cm-gutterElement {
+    cursor: pointer;
+    opacity: 0.9;
+  }
+  .notion-editor.code-mode .cm-tooltip-autocomplete {
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-1);
+    border-radius: 0.45rem;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+  }
+  .notion-editor.code-mode .cm-tooltip-autocomplete ul {
+    margin: 0;
+    padding: 0.2rem;
+  }
+  .notion-editor.code-mode .cm-tooltip-autocomplete ul li {
+    margin: 0;
+    padding: 0.32rem 0.48rem;
+    border-radius: 0.3rem;
+  }
+  .notion-editor.code-mode .cm-tooltip-autocomplete ul li[aria-selected] {
+    background: var(--bg-3);
+    color: var(--accent);
   }
 
   /* Prism tokens */
@@ -772,6 +836,29 @@
     min-width: 140px;
     max-height: 260px;
     overflow-y: auto;
+  }
+  .lang-search {
+    width: calc(100% - 0.8rem);
+    margin: 0.4rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.3rem;
+    border: 1px solid var(--border);
+    outline: none;
+    background: var(--bg-3);
+    color: var(--text-1);
+    font-family: var(--font-1);
+    font-size: 0.74rem;
+  }
+  .lang-search:focus {
+    border-color: var(--accent);
+  }
+  .lang-empty {
+    padding: 0.4rem 0.65rem 0.55rem;
+    color: var(--text-3);
+    font-size: 0.72rem;
   }
   .lang-option {
     @apply flex items-center w-full text-left;
