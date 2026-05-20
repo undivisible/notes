@@ -165,7 +165,6 @@
     lastSaved = $state("Just now");
   let currentFont = $state("'JetBrains Mono', monospace");
   let currentTheme = $state("light");
-  let showExport = $state(false);
   let showTheme = $state(false);
   let showFont = $state(false);
   let showSearch = $state(false);
@@ -963,7 +962,6 @@
     showSearch = true;
     showTheme = false;
     showFont = false;
-    showExport = false;
   }
 
   function closeSearch() {
@@ -1378,7 +1376,7 @@
     if (!sel?.rangeCount) return;
     const txt = sel.getRangeAt(0).toString();
     if (txt) {
-      document.execCommand("insertHTML", false, `<code>${txt}</code>`);
+      insertInlineCode(txt);
       syncContent();
     }
   }
@@ -1391,7 +1389,7 @@
     setTimeout(() => selBarEl?.querySelector(".sel-link-input")?.focus(), 0);
   }
   function selBarApplyLink() {
-    const url = linkInputVal.trim();
+    const url = sanitizeEditableLink(linkInputVal);
     selBarLink = false;
     if (!url) return;
     if (_savedRange) {
@@ -1400,11 +1398,7 @@
       sel?.addRange(_savedRange);
       _savedRange = null;
     }
-    document.execCommand(
-      "createLink",
-      false,
-      url.startsWith("http") ? url : "https://" + url,
-    );
+    document.execCommand("createLink", false, url);
     showSelBar = false;
     syncContent();
   }
@@ -1877,7 +1871,6 @@
     if (e.key === "F1") {
       e.preventDefault();
       showHelp = !showHelp;
-      showExport = false;
       showTheme = false;
       showFont = false;
       return;
@@ -1889,9 +1882,9 @@
     }
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      showExport = !showExport;
       showTheme = false;
       showFont = false;
+      importInputEl?.click();
     }
     if ((e.metaKey || e.ctrlKey) && e.key === "t") {
       e.preventDefault();
@@ -2100,7 +2093,7 @@
     const sel = window.getSelection();
     if (sel?.rangeCount && !sel.isCollapsed) {
       const txt = sel.getRangeAt(0).toString();
-      document.execCommand("insertHTML", false, `<code>${txt}</code>`);
+      insertInlineCode(txt);
     } else {
       const pre = document.createElement("pre");
       const code = document.createElement("code");
@@ -2123,6 +2116,35 @@
     syncContent();
   }
 
+  function insertInlineCode(text) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const code = document.createElement("code");
+    code.textContent = text;
+    range.deleteContents();
+    range.insertNode(code);
+    const nextRange = document.createRange();
+    nextRange.setStartAfter(code);
+    nextRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(nextRange);
+  }
+
+  function sanitizeEditableLink(value) {
+    const trimmed = value.trim();
+    const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    if (/^mailto:[^<>"\s]+$/i.test(candidate)) return candidate;
+    try {
+      const url = new URL(candidate);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+    } catch {
+      return "";
+    }
+  }
+
   function applyImage() {
     if (!editorEl) return;
     editorEl.focus();
@@ -2138,7 +2160,6 @@
   }
 
   function closeAll() {
-    showExport = false;
     showTheme = false;
     showFont = false;
     showHelp = false;
@@ -2159,33 +2180,6 @@
     saveRecentFont(f);
     showFont = false;
     fontSearch = "";
-  }
-
-  function exportFormat(type) {
-    showExport = false;
-    const c = activeMarkdown();
-    const codeDoc = isCodeDocument();
-    if (type === "md") {
-      download(
-        new Blob([c], {
-          type: codeDoc ? "text/plain" : "text/markdown",
-        }),
-        activeFileName(codeDoc ? "txt" : "md"),
-      );
-    } else if (type === "html") {
-      const h = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:ui-monospace,monospace;max-width:800px;margin:40px auto;padding:20px;line-height:1.8}pre{background:#f5f5f5;padding:16px;border-radius:8px;overflow-x:auto}code{background:#eee;padding:2px 6px;border-radius:4px}</style></head><body>${markdownToHtml(codeDoc ? "```" + activeCodeLang() + "\n" + c + "\n```" : c)}</body></html>`;
-      download(
-        new Blob([h], { type: "text/html" }),
-        `notes-${Date.now()}.html`,
-      );
-    } else if (type === "pdf") {
-      const pw = window.open("", "_blank");
-      pw.document.write(
-        `<!DOCTYPE html><html><head><meta charset="utf-8"><style>@media print{@page{size:A4;margin:2cm}body{font-family:ui-monospace,monospace}}</style></head><body>${markdownToHtml(codeDoc ? "```" + activeCodeLang() + "\n" + c + "\n```" : c)}<script>print();close()</scr` +
-          `ipt></body></html>`,
-      );
-      pw.document.close();
-    }
   }
 
   function copyDownload() {
@@ -2278,7 +2272,6 @@
             e.stopPropagation();
             showTheme = !showTheme;
             showFont = false;
-            showExport = false;
             shareCopied = false;
           }}
           title="Theme"
@@ -2322,7 +2315,6 @@
               recentFonts.forEach((f) => loadFont(f));
             }
             showTheme = false;
-            showExport = false;
             shareCopied = false;
           }}
           title="Font"
@@ -2556,84 +2548,28 @@
 
       <div class="sb-divider"></div>
 
-      <!-- Export -->
-      <div class="popout-wrap">
-        <button
-          class="sidebar-icon"
-          onclick={(e) => {
-            e.stopPropagation();
-            showExport = !showExport;
-            showTheme = false;
-            showFont = false;
-            shareCopied = false;
-          }}
-          title="Export"
+      <button
+        class="sidebar-icon"
+        onclick={(e) => {
+          e.stopPropagation();
+          showTheme = false;
+          showFont = false;
+          shareCopied = false;
+          importInputEl?.click();
+        }}
+        title="Import markdown"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+            points="17 8 12 3 7 8"
+          /><line x1="12" y1="3" x2="12" y2="15" /></svg
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            ><path
-              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-            /><polyline points="14 2 14 8 20 8" /></svg
-          >
-          <span class="tooltip">Export</span>
-        </button>
-        {#if showExport}
-          <div class="popout export-popout">
-            <button
-              class="export-item"
-              onclick={() => {
-                showExport = false;
-                importInputEl?.click();
-              }}
-              ><svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
-                  points="17 8 12 3 7 8"
-                /><line x1="12" y1="3" x2="12" y2="15" /></svg
-              >Import</button
-            >
-            <button class="export-item" onclick={() => exportFormat("md")}
-              ><svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                ><path
-                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                /><polyline points="14 2 14 8 20 8" /></svg
-              >Markdown</button
-            >
-            <button class="export-item" onclick={() => exportFormat("html")}
-              ><svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                ><polyline points="16 18 22 12 16 6" /><polyline
-                  points="8 6 2 12 8 18"
-                /></svg
-              >HTML</button
-            >
-            <button class="export-item" onclick={() => exportFormat("pdf")}
-              ><svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
-                  points="7 10 12 15 17 10"
-                /><line x1="12" y1="15" x2="12" y2="3" /></svg
-              >PDF</button
-            >
-          </div>
-        {/if}
-      </div>
+        <span class="tooltip">Import markdown</span>
+      </button>
 
       <button
         class="sidebar-icon"
@@ -2673,6 +2609,7 @@
       <input
         bind:this={importInputEl}
         type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
         class="import-input"
         onchange={(e) => {
           importDocument(e.currentTarget.files?.[0]);
@@ -2687,7 +2624,6 @@
         onclick={(e) => {
           e.stopPropagation();
           showHelp = !showHelp;
-          showExport = false;
           showTheme = false;
           showFont = false;
         }}

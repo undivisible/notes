@@ -5,8 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   server: {
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 5000,
-    allowedHosts: true,
   },
 });

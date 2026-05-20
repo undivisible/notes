@@ -117,7 +117,12 @@ function inlineMarkdown(text) {
         return imageEmbedHtml(src, alt, parsed.width, parsed.caption);
       },
     )
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
+      const safeHref = sanitizeLinkUrl(href);
+      return safeHref
+        ? `<a href="${escapeAttribute(safeHref)}">${label}</a>`
+        : label;
+    });
 }
 
 function imageEmbedHtml(src = "", alt = "", width = "", caption = "") {
@@ -139,6 +144,17 @@ function escapeAttribute(value) {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function sanitizeLinkUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (/^mailto:[^<>"\s]+$/i.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function sanitizeImageWidth(value) {
