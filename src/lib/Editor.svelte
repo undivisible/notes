@@ -1196,18 +1196,20 @@
     const after = textNode.textContent.slice(matchEnd);
     const fmtEl = document.createElement(tag);
     fmtEl.textContent = content;
-    const afterNode = document.createTextNode(after || "\u200b");
+    const afterNode = document.createTextNode(after || "");
     if (before) parent.insertBefore(document.createTextNode(before), textNode);
     parent.insertBefore(fmtEl, textNode);
     parent.insertBefore(afterNode, textNode);
     parent.removeChild(textNode);
-    // Place cursor right after the formatted element
     const sel = window.getSelection();
     const r = document.createRange();
-    r.setStart(afterNode, after ? 0 : 1);
+    r.setStart(afterNode, 0);
     r.collapse(true);
     sel?.removeAllRanges();
     sel?.addRange(r);
+    ["bold", "italic", "strikeThrough", "underline"].forEach((command) => {
+      if (document.queryCommandState(command)) document.execCommand(command);
+    });
     return true;
   }
 
