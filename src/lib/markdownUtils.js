@@ -264,10 +264,16 @@ function listDepth(list) {
 }
 
 function listToMd(list, depth = 0) {
-  return Array.from(list.children)
-    .filter((child) => child.tagName.toLowerCase() === "li")
-    .map((child) => liToMd(child, depth))
-    .join("");
+  let markdown = "";
+  for (const child of Array.from(list.children)) {
+    const tag = child.tagName.toLowerCase();
+    if (tag === "li") {
+      markdown += liToMd(child, depth);
+    } else if (["ul", "ol"].includes(tag)) {
+      markdown += listToMd(child, depth + 1);
+    }
+  }
+  return markdown;
 }
 
 function liToMd(li, depth = 0) {
