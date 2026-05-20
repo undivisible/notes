@@ -60,53 +60,21 @@ export function markdownToHtml(markdown) {
     },
   );
 
-  // Lists
   const lines = html.split("\n");
   const result = [];
-  let inUl = false,
-    inOl = false;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
     const trimmed = line.trim();
-    if (/^[-*+] /.test(trimmed)) {
-      if (inOl) {
-        result.push("</ol>");
-        inOl = false;
+    if (isMarkdownListLine(line)) {
+      const listLines = [];
+      while (i < lines.length && isMarkdownListLine(lines[i])) {
+        listLines.push(lines[i]);
+        i += 1;
       }
-      if (!inUl) {
-        result.push("<ul>");
-        inUl = true;
-      }
-      result.push("<li>" + trimmed.substring(2) + "</li>");
-    } else if (/^\d+\. /.test(trimmed)) {
-      if (inUl) {
-        result.push("</ul>");
-        inUl = false;
-      }
-      if (!inOl) {
-        result.push("<ol>");
-        inOl = true;
-      }
-      result.push("<li>" + trimmed.replace(/^\d+\. /, "") + "</li>");
+      i -= 1;
+      result.push(markdownListToHtml(listLines));
     } else {
-      if (inUl) {
-        result.push("</ul>");
-        inUl = false;
-      }
-      if (inOl) {
-        result.push("</ol>");
-        inOl = false;
-      }
-      let p = trimmed
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/__(.+?)__/g, "<strong>$1</strong>")
-        .replace(/~~(.+?)~~/g, "<del>$1</del>")
-        .replace(/\*(.+?)\*/g, "<em>$1</em>")
-        .replace(/_(.+?)_/g, "<em>$1</em>")
-        .replace(
-          /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
-          '<img alt="$1" src="$2">',
-        )
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+      let p = inlineMarkdown(trimmed);
       if (trimmed !== "") {
         const isBlock =
           /^<(h[1-6]|ul|ol|li|blockquote|table|pre|hr|img)[^>]*>/.test(trimmed);
@@ -116,9 +84,68 @@ export function markdownToHtml(markdown) {
       }
     }
   }
-  if (inUl) result.push("</ul>");
-  if (inOl) result.push("</ol>");
   return result.join("\n");
+}
+
+function inlineMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/__(.+?)__/g, "<strong>$1</strong>")
+    .replace(/~~(.+?)~~/g, "<del>$1</del>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/_(.+?)_/g, "<em>$1</em>")
+    .replace(
+      /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
+      '<img alt="$1" src="$2">',
+    )
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function isMarkdownListLine(line) {
+  return /^(\s*)([-*+]|\d+\.)\s+\S/.test(line);
+}
+
+function parseMarkdownListLine(line) {
+  const match = line.match(/^(\s*)([-*+]|\d+\.)\s+(.+)$/);
+  if (!match) return null;
+  return {
+    depth: Math.floor(match[1].replace(/\t/g, "  ").length / 2),
+    type: /^\d+\.$/.test(match[2]) ? "ol" : "ul",
+    content: match[3],
+  };
+}
+
+function markdownListToHtml(listLines) {
+  const items = listLines.map(parseMarkdownListLine).filter(Boolean);
+  let index = 0;
+
+  function render(depth) {
+    let html = "";
+    let openType = null;
+    while (index < items.length) {
+      const item = items[index];
+      if (item.depth < depth) break;
+      if (item.depth > depth) {
+        html += render(item.depth);
+        continue;
+      }
+      if (openType !== item.type) {
+        if (openType) html += `</${openType}>`;
+        openType = item.type;
+        html += `<${openType}>`;
+      }
+      html += `<li>${inlineMarkdown(item.content)}`;
+      index += 1;
+      if (index < items.length && items[index].depth > depth) {
+        html += render(items[index].depth);
+      }
+      html += "</li>";
+    }
+    if (openType) html += `</${openType}>`;
+    return html;
+  }
+
+  return render(items[0]?.depth || 0);
 }
 
 // HTML → Markdown (for saving from the contenteditable)
@@ -194,13 +221,9 @@ function nodeToMd(node) {
     }
     case "ul":
     case "ol":
-      return kids();
+      return listToMd(node, listDepth(node));
     case "li": {
-      const marker =
-        node.parentElement?.tagName.toLowerCase() === "ol"
-          ? `${Array.from(node.parentElement.children).indexOf(node) + 1}.`
-          : "-";
-      return `${marker} ${text()}\n`;
+      return liToMd(node, listDepth(node.parentElement));
     }
     case "a":
       return `[${kids()}](${node.getAttribute("href") || ""})`;
@@ -223,6 +246,53 @@ function nodeToMd(node) {
     default:
       return kids();
   }
+}
+
+function listDepth(list) {
+  let depth = -1;
+  let current = list;
+  while (current) {
+    if (
+      current.nodeType === 1 &&
+      ["ul", "ol"].includes(current.tagName.toLowerCase())
+    ) {
+      depth += 1;
+    }
+    current = current.parentElement;
+  }
+  return Math.max(depth, 0);
+}
+
+function listToMd(list, depth = 0) {
+  return Array.from(list.children)
+    .filter((child) => child.tagName.toLowerCase() === "li")
+    .map((child) => liToMd(child, depth))
+    .join("");
+}
+
+function liToMd(li, depth = 0) {
+  const parentTag = li.parentElement?.tagName.toLowerCase();
+  const marker =
+    parentTag === "ol"
+      ? `${Array.from(li.parentElement.children).indexOf(li) + 1}.`
+      : "-";
+  const indent = "  ".repeat(depth);
+  const inline = Array.from(li.childNodes)
+    .filter(
+      (child) =>
+        !(
+          child.nodeType === 1 &&
+          ["ul", "ol"].includes(child.tagName.toLowerCase())
+        ),
+    )
+    .map(nodeToMd)
+    .join("")
+    .trim();
+  const nested = Array.from(li.children)
+    .filter((child) => ["ul", "ol"].includes(child.tagName.toLowerCase()))
+    .map((child) => listToMd(child, depth + 1))
+    .join("");
+  return `${indent}${marker} ${inline}\n${nested}`;
 }
 
 function escapeHtml(text) {

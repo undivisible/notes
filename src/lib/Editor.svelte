@@ -588,18 +588,19 @@
     return new TextDecoder().decode(bytes);
   }
 
-  function sharedContentFromPath() {
-    const value = window.location.pathname.replace(/^\/+/, "").trim();
+  function sharedContentFromUrl() {
+    const params = new window.URLSearchParams(window.location.search);
+    const value = params.get("content");
     if (!value) return null;
     try {
-      return decodeSharedContent(decodeURIComponent(value));
+      return decodeSharedContent(value);
     } catch {
       return null;
     }
   }
 
   function loadSharedContentIfPresent() {
-    const sharedContent = sharedContentFromPath();
+    const sharedContent = sharedContentFromUrl();
     if (sharedContent === null) return false;
     const id = newTabId();
     tabs = [{ id, title: "Shared note" }];
@@ -1834,6 +1835,15 @@
     // ── Standard shortcuts ──
     if (e.key === "Tab") {
       e.preventDefault();
+      const listItem =
+        startNode?.nodeType === 3
+          ? startNode.parentElement?.closest("li")
+          : startNode?.closest?.("li");
+      if (listItem && editorEl?.contains(listItem)) {
+        document.execCommand(e.shiftKey ? "outdent" : "indent");
+        syncContent();
+        return;
+      }
       document.execCommand("insertHTML", false, "\u00a0\u00a0");
       return;
     }
@@ -2098,7 +2108,7 @@
   async function copyShareLink() {
     localStorage.setItem(tabKey(activeTabId), activeMarkdown());
     const encoded = encodeSharedContent(activeMarkdown());
-    const url = `${window.location.origin}/${encoded}`;
+    const url = `${window.location.origin}/?content=${encodeURIComponent(encoded)}`;
     await navigator.clipboard.writeText(url);
     shareCopied = true;
     setTimeout(() => {

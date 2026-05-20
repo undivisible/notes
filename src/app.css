@@ -491,6 +491,12 @@
   .notion-editor:not(.code-mode) ul {
     list-style-type: disc;
   }
+  .notion-editor:not(.code-mode) ul ul {
+    list-style-type: circle;
+  }
+  .notion-editor:not(.code-mode) ul ul ul {
+    list-style-type: square;
+  }
   .notion-editor:not(.code-mode) ol {
     list-style-type: decimal;
   }
