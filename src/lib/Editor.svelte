@@ -612,6 +612,7 @@
     clearTimeout(saveTimeout);
     localStorage.setItem(tabKey(id), sharedContent);
     _saveTabs();
+    _loadTabContent(id);
     clearSharedContentUrl();
     return true;
   }
@@ -908,8 +909,9 @@
     } else document.body.className = "theme-" + currentTheme;
 
     loadTabs();
-    loadSharedContentIfPresent();
-    _loadTabContent(activeTabId);
+    if (!loadSharedContentIfPresent()) {
+      _loadTabContent(activeTabId);
+    }
   });
 
   onDestroy(() => {
