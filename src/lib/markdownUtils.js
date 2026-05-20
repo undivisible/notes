@@ -6,8 +6,11 @@ export function markdownToHtml(markdown) {
 
   // Fenced code blocks — capture optional language tag
   html = html.replace(/```(\w*)\r?\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const langClass = lang ? ` class="language-${lang}"` : "";
-    const langAttr = lang ? ` data-lang="${lang}"` : "";
+    const normalizedLang = normalizeCodeLang(lang);
+    const langClass = normalizedLang
+      ? ` class="language-${normalizedLang}"`
+      : "";
+    const langAttr = normalizedLang ? ` data-lang="${normalizedLang}"` : "";
     return `<pre${langAttr}><code${langClass}>${code}</code></pre>`;
   });
 
@@ -93,12 +96,33 @@ function inlineMarkdown(text) {
     .replace(/__(.+?)__/g, "<strong>$1</strong>")
     .replace(/~~(.+?)~~/g, "<del>$1</del>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/_(.+?)_/g, "<em>$1</em>")
+    .replace(/_([^_\n]+)_/g, "<u>$1</u>")
     .replace(
       /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
       '<img alt="$1" src="$2">',
     )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function normalizeCodeLang(lang) {
+  const normalized = (lang || "").toLowerCase().trim();
+  const aliases = {
+    js: "javascript",
+    jsx: "jsx",
+    ts: "typescript",
+    tsx: "tsx",
+    py: "python",
+    rb: "ruby",
+    sh: "bash",
+    shell: "bash",
+    zsh: "bash",
+    yml: "yaml",
+    html: "markup",
+    xml: "markup",
+    md: "markdown",
+    rs: "rust",
+  };
+  return aliases[normalized] || normalized;
 }
 
 function isMarkdownListLine(line) {
@@ -190,8 +214,8 @@ function nodeToMd(node) {
       return t ? `~~${t}~~` : "";
     }
     case "u": {
-      const t = kids();
-      return t ? `<u>${t}</u>` : "";
+      const t = text();
+      return t ? `_${t}_` : "";
     }
     case "h1":
       return `# ${text()}\n`;

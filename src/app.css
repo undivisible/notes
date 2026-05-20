@@ -348,7 +348,7 @@
     margin: 0 auto;
     padding: 3rem 2rem 12rem;
     font-size: 1rem;
-    line-height: 1.8;
+    line-height: 1.5;
     color: var(--text-1);
     caret-color: var(--accent);
     word-wrap: break-word;
@@ -480,8 +480,8 @@
   }
   .notion-editor:not(.code-mode) p,
   .notion-editor:not(.code-mode) div {
-    margin-bottom: 0.1rem;
-    min-height: 1.8em;
+    margin-bottom: 0.05rem;
+    min-height: 1.45em;
   }
   .notion-editor:not(.code-mode) ul,
   .notion-editor:not(.code-mode) ol {
@@ -553,6 +553,10 @@
   .notion-editor:not(.code-mode) i {
     font-style: italic;
   }
+  .notion-editor:not(.code-mode) u {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
   .notion-editor :not(pre) > code {
     font-family: var(--font-1);
     font-size: 0.875em;
@@ -568,16 +572,16 @@
     background: var(--bg-3);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
-    margin: 0.75rem 0;
+    margin: 0.55rem 0;
     overflow: hidden;
   }
   .notion-editor pre code {
     @apply block overflow-x-auto;
-    padding: 1rem 1.25rem;
+    padding: 0.7rem 0.9rem;
     background: none;
     border: none;
     font-size: 0.875em;
-    line-height: 1.6;
+    line-height: 1.35;
     white-space: pre;
   }
   .notion-editor pre[data-lang]::before {
@@ -826,8 +830,8 @@
   .lang-badge {
     @apply flex items-center cursor-pointer;
     gap: 0.3rem;
-    padding: 0.18rem 0.45rem;
-    font-size: 0.65rem;
+    padding: 0.12rem 0.36rem;
+    font-size: 0.58rem;
     font-family: var(--font-1);
     color: var(--text-3);
     background: var(--bg-2);
@@ -849,8 +853,8 @@
     border-radius: 0.4rem;
     overflow: hidden;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-    min-width: 140px;
-    max-height: 260px;
+    width: 132px;
+    max-height: 168px;
     overflow-y: auto;
   }
   .lang-search {
@@ -859,14 +863,14 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 0.35rem 0.5rem;
+    padding: 0.25rem 0.4rem;
     border-radius: 0.3rem;
     border: 1px solid var(--border);
     outline: none;
     background: var(--bg-3);
     color: var(--text-1);
     font-family: var(--font-1);
-    font-size: 0.74rem;
+    font-size: 0.68rem;
   }
   .lang-search:focus {
     border-color: var(--accent);
@@ -878,8 +882,8 @@
   }
   .lang-option {
     @apply flex items-center w-full text-left;
-    padding: 0.3rem 0.65rem;
-    font-size: 0.78rem;
+    padding: 0.22rem 0.48rem;
+    font-size: 0.7rem;
     font-family: var(--font-1);
     color: var(--text-1);
     background: transparent;

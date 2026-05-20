@@ -20,6 +20,7 @@
   import "prismjs/components/prism-jsx";
   import "prismjs/components/prism-tsx";
   import "prismjs/components/prism-ruby";
+  import "prismjs/components/prism-markup-templating";
   import "prismjs/components/prism-php";
   import "prismjs/components/prism-swift";
   import "prismjs/components/prism-kotlin";
@@ -635,6 +636,7 @@
       } else {
         destroyCodeEditor();
         editorEl.innerHTML = saved ? markdownToHtml(saved) : "";
+        requestAnimationFrame(applyPrism);
         scheduleHighlight();
       }
       editorEl.style.fontFamily = currentFont;
@@ -1153,14 +1155,11 @@
       const isFocusedBlock = Boolean(
         sel?.focusNode && block.contains(sel.focusNode),
       );
-      // Keep markdown editing stable by not re-highlighting the focused block.
-      // In full-page code mode, we do re-highlight and restore caret position.
-      if (!codeMode && isFocusedBlock) return;
       const pre = block.closest("pre");
       // Strip any existing Prism spans to re-highlight cleanly
       const raw = block.textContent;
       let cursorOffset = null;
-      if (codeMode && isFocusedBlock && sel?.rangeCount) {
+      if ((codeMode || isFocusedBlock) && isFocusedBlock && sel?.rangeCount) {
         const range = sel.getRangeAt(0);
         if (range.collapsed) {
           const working = document.createRange();
@@ -1170,15 +1169,17 @@
         }
       }
       block.textContent = raw;
-      if (!block.className) {
-        const lang =
-          normalizeLang(pre?.getAttribute("data-lang")) || detectLanguage(raw);
-        if (lang) {
-          pre?.setAttribute("data-lang", lang);
-          if (lang !== "none") block.className = `language-${lang}`;
-        }
+      const classLang = block.className.match(/language-([\w-]+)/)?.[1];
+      const lang =
+        normalizeLang(pre?.getAttribute("data-lang") || classLang) ||
+        detectLanguage(raw);
+      if (lang && lang !== "none") {
+        pre?.setAttribute("data-lang", lang);
+        block.className = `language-${lang}`;
       }
-      if (block.className) Prism.highlightElement(block);
+      if (lang && Prism.languages[lang]) {
+        block.innerHTML = Prism.highlight(raw, Prism.languages[lang], lang);
+      }
       if (cursorOffset !== null) {
         const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
         let remaining = cursorOffset;
@@ -1341,6 +1342,20 @@
         offset,
         "del",
         strikeM[1],
+      );
+      _inlineSkip = false;
+      syncContent();
+      return;
+    }
+    const underlineM = text.match(/_([^_\n]+)_$/);
+    if (underlineM) {
+      _inlineSkip = true;
+      applyInlineFormat(
+        node,
+        offset - underlineM[0].length,
+        offset,
+        "u",
+        underlineM[1],
       );
       _inlineSkip = false;
       syncContent();
@@ -1690,7 +1705,7 @@
         const m = blockText.match(/^```(\w*)$/);
         if (m) {
           e.preventDefault();
-          const lang = m[1];
+          const lang = normalizeLang(m[1]);
           const pre = document.createElement("pre");
           if (lang) pre.setAttribute("data-lang", lang);
           const code = document.createElement("code");
@@ -1792,38 +1807,6 @@
         }
         const r = document.createRange();
         r.setStart(li, 0);
-        r.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(r);
-        syncContent();
-        return;
-      }
-    }
-
-    // ── Backtick: detect triple-backtick ──
-    if (e.key === "`" && startNode?.nodeType === 3) {
-      const before = startNode.textContent.slice(0, range.startOffset);
-      if (before.endsWith("``")) {
-        e.preventDefault();
-        // Remove the two preceding backticks and current block text before them
-        const block = getContainingBlock(startNode);
-        const lang = before.slice(0, -2).trim();
-        const pre = document.createElement("pre");
-        if (lang) pre.setAttribute("data-lang", lang);
-        const code = document.createElement("code");
-        if (lang) code.className = `language-${lang}`;
-        code.textContent = "\n";
-        pre.appendChild(code);
-        const after = document.createElement("p");
-        after.innerHTML = "<br>";
-        if (block) {
-          block.replaceWith(pre);
-        } else {
-          editorEl.appendChild(pre);
-        }
-        pre.after(after);
-        const r = document.createRange();
-        r.setStart(code.firstChild, 0);
         r.collapse(true);
         sel.removeAllRanges();
         sel.addRange(r);
@@ -2781,9 +2764,10 @@
     class="code-toolbar"
     role="toolbar"
     tabindex="-1"
-    style="top:{activePreRect.top + 4}px;right:{window.innerWidth -
-      activePreRect.right +
-      8}px"
+    style="top:{Math.min(
+      Math.max(40, activePreRect.top + 4),
+      window.innerHeight - 210,
+    )}px;right:{window.innerWidth - activePreRect.right + 8}px"
     onmouseleave={handleToolbarMouseLeave}
   >
     <button
