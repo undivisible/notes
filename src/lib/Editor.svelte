@@ -317,7 +317,6 @@
   }
 
   const langAliases = {
-    auto: "auto",
     text: "none",
     plaintext: "none",
     shell: "bash",
@@ -335,7 +334,6 @@
   };
 
   const langOptions = [
-    { id: "auto", label: "Auto-detect", aliases: ["auto", "detect"] },
     { id: "none", label: "Plain Text", aliases: ["text", "plain"] },
     { id: "javascript", label: "JavaScript", aliases: ["js", "node"] },
     { id: "jsx", label: "JSX", aliases: ["react"] },
@@ -993,120 +991,6 @@
     }
   });
 
-  function detectLanguage(code) {
-    const t = code.trim();
-    if (!t || t.length < 8) return null;
-    const checks = [
-      [
-        "typescript",
-        [
-          /\b(interface|type\s+\w+\s*=|enum|implements|readonly|namespace|as\s+\w+)\b/,
-          /:\s*(string|number|boolean|void|any|never)\b/,
-          /<[A-Z]\w+>/,
-        ],
-      ],
-      [
-        "javascript",
-        [
-          /\b(const|let|var|function\s+\w+|=>|async|await|require\s*\(|module\.exports)\b/,
-          /console\.(log|error|warn)/,
-          /\.(then|catch|finally)\(/,
-          /`\${/,
-        ],
-      ],
-      [
-        "python",
-        [
-          /\bdef\s+\w+\s*\(/,
-          /\b(import|from)\s+\w+/,
-          /\bclass\s+\w+.*:/,
-          /\bprint\s*\(/,
-          /#.*$/,
-          /"""/,
-        ],
-      ],
-      [
-        "html",
-        [
-          /<[a-z][\w-]*\s*[^>]*>/,
-          /<!DOCTYPE\s+html/i,
-          /<\/(div|span|p|a|h[1-6]|body|html)>/i,
-        ],
-      ],
-      [
-        "css",
-        [
-          /[.#][\w-]+\s*\{/,
-          /@(media|keyframes|import|font-face)/,
-          /:\s*[\w-]+\s*;/,
-        ],
-      ],
-      [
-        "json",
-        [/^\s*[[{][\s\S]*[\]}]\s*$/, /"[\w-]+":\s*("|{|\[|\d|true|false|null)/],
-      ],
-      [
-        "bash",
-        [
-          /^#!\//,
-          /\b(echo|ls|cd|grep|sed|awk|chmod|export|curl|git)\s/,
-          /\$\{?\w+\}?/,
-          /\|\s*\w+/,
-        ],
-      ],
-      [
-        "sql",
-        [/\b(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE\s+TABLE)\b/i],
-      ],
-      [
-        "rust",
-        [
-          /\bfn\s+\w+\s*\(/,
-          /\b(let mut|impl |struct |enum |trait |use |pub |crate)\b/,
-          /::/,
-        ],
-      ],
-      [
-        "go",
-        [
-          /\bfunc\s+\w+\s*\(/,
-          /\b(package|var|type|interface|struct)\b/,
-          /:=/,
-          /fmt\./,
-        ],
-      ],
-      [
-        "java",
-        [
-          /\b(public|private|protected)\s+(static\s+)?[\w<>]+\s+\w+\s*\(/,
-          /System\.(out|err)\./,
-          /@Override/,
-        ],
-      ],
-      ["cpp", [/#include\s*[<"]/, /\b(std::|cout|cin|nullptr|vector<|map<)\b/]],
-      [
-        "c",
-        [
-          /#include\s*[<"]/,
-          /\b(printf|scanf|malloc|free|NULL)\b/,
-          /\bint\s+main\s*\(/,
-        ],
-      ],
-      ["yaml", [/^[\w-]+:\s*\S/m, /^\s*-\s+\w/m, /^---\s*$/m]],
-      ["markup", [/<\?xml/, /<[A-Z][A-Z:]+[\s>]/, /xmlns:/]],
-    ];
-    let best = null,
-      bestScore = 0;
-    for (const [lang, pats] of checks) {
-      const score = pats.filter((p) => p.test(t)).length;
-      if (score > bestScore) {
-        bestScore = score;
-        best = lang;
-      }
-    }
-    return bestScore >= 1 ? best : null;
-  }
-
   function normalizeLang(langId) {
     const normalized = (langId || "").toLowerCase().trim();
     return langAliases[normalized] || normalized;
@@ -1116,18 +1000,7 @@
     if (!activePre) return;
     const normalizedLang = normalizeLang(langId);
     const codeEl = activePre.querySelector("code");
-    if (normalizedLang === "auto") {
-      activePre.removeAttribute("data-lang");
-      if (codeEl) {
-        const detected = detectLanguage(codeEl.textContent);
-        if (detected) {
-          activePre.setAttribute("data-lang", detected);
-          codeEl.className = `language-${detected}`;
-        } else {
-          codeEl.className = "";
-        }
-      }
-    } else if (normalizedLang === "none") {
+    if (normalizedLang === "none") {
       activePre.removeAttribute("data-lang");
       if (codeEl) codeEl.className = "";
     } else {
@@ -1172,9 +1045,7 @@
       }
       block.textContent = raw;
       const classLang = block.className.match(/language-([\w-]+)/)?.[1];
-      const lang =
-        normalizeLang(pre?.getAttribute("data-lang") || classLang) ||
-        detectLanguage(raw);
+      const lang = normalizeLang(pre?.getAttribute("data-lang") || classLang);
       if (lang && lang !== "none") {
         pre?.setAttribute("data-lang", lang);
         block.className = `language-${lang}`;
@@ -2137,7 +2008,7 @@
       if (pre) {
         const detected = pre.classList.contains("code-document-pre")
           ? activeCodeLang()
-          : detectLanguage(raw);
+          : normalizeLang(pre.getAttribute("data-lang") || "");
         if (detected) {
           pre.setAttribute("data-lang", detected);
           codeBlock.className = `language-${detected}`;
@@ -3218,7 +3089,7 @@
         {#each filteredLangOptions as opt}
           <button
             class="lang-option {(activePre.getAttribute('data-lang') ||
-              'auto') === opt.id
+              'none') === opt.id
               ? 'active'
               : ''}"
             onmousedown={(e) => {
