@@ -1505,6 +1505,25 @@
     syncContent();
   }
 
+  function handleEditorClick(e) {
+    const button = e.target.closest?.(".image-embed-apply");
+    if (!button) return;
+    const embed = button.closest(".image-embed");
+    const urlInput = embed?.querySelector(".image-embed-url");
+    const altInput = embed?.querySelector(".image-embed-alt");
+    const url = urlInput?.value?.trim() || "";
+    if (!embed || !/^https?:\/\//i.test(url)) return;
+    let img = embed.querySelector("img");
+    if (!img) {
+      img = document.createElement("img");
+      embed.querySelector(".image-embed-empty")?.replaceWith(img);
+    }
+    img.src = url;
+    img.alt = altInput?.value || "";
+    embed.classList.remove("pending");
+    syncContent();
+  }
+
   // ── Execute slash command ──
   function executeSlashCmd(cmd) {
     const block = slashBlock;
@@ -2039,25 +2058,13 @@
     syncContent();
   }
 
-  function escapeAttribute(value) {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
   function applyImage() {
     if (!editorEl) return;
-    const src = prompt("Image URL");
-    const trimmedSrc = src?.trim() || "";
-    if (!/^https?:\/\//i.test(trimmedSrc)) return;
-    const alt = prompt("Alt text") || "";
     editorEl.focus();
     document.execCommand(
       "insertHTML",
       false,
-      `<img src="${escapeAttribute(trimmedSrc)}" alt="${escapeAttribute(alt)}">`,
+      `<figure class="image-embed pending" contenteditable="false"><div class="image-embed-empty">Image link</div><div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link"><button class="image-embed-apply" type="button">Add</button></div><input class="image-embed-alt" type="text" placeholder="Alt text / caption"></figure>`,
     );
     syncContent();
   }
@@ -2730,6 +2737,7 @@
           ? 'code-mode'
           : ''}"
         oninput={handleInput}
+        onclick={handleEditorClick}
         onkeydown={handleKeydown}
         onpaste={handlePaste}
         onfocusout={handleFocusOut}

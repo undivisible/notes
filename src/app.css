@@ -535,15 +535,96 @@
     text-decoration: underline;
     text-underline-offset: 2px;
   }
-  .notion-editor:not(.code-mode) img {
+  .notion-editor:not(.code-mode) .image-embed {
+    position: relative;
     display: block;
+    width: fit-content;
     max-width: 100%;
-    max-height: min(620px, 70vh);
     margin: 0.9rem 0;
+    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     background: var(--bg-3);
+  }
+  .notion-editor:not(.code-mode) .image-embed img {
+    display: block;
+    max-width: 100%;
+    max-height: min(620px, 70vh);
     object-fit: contain;
+  }
+  .image-embed-empty {
+    @apply flex items-center justify-center;
+    width: min(28rem, calc(100vw - 8rem));
+    min-height: 8rem;
+    color: var(--text-3);
+    font-size: 0.85rem;
+  }
+  .image-embed-controls {
+    @apply flex items-center;
+    gap: 0.35rem;
+    padding: 0.45rem;
+    background: var(--bg-2);
+    border-top: 1px solid var(--border);
+  }
+  .image-embed:not(.pending) .image-embed-controls {
+    display: none;
+  }
+  .image-embed-url {
+    min-width: 0;
+    width: min(20rem, calc(100vw - 13rem));
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    outline: none;
+    background: var(--bg-3);
+    color: var(--text-1);
+    font-family: var(--font-1);
+    font-size: 0.75rem;
+  }
+  .image-embed-apply {
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    background: var(--bg-3);
+    color: var(--text-1);
+    font-family: var(--font-1);
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .image-embed-apply:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .image-embed-alt {
+    position: absolute;
+    left: 0.45rem;
+    bottom: 0.45rem;
+    width: min(18rem, calc(100% - 0.9rem));
+    padding: 0.3rem 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0.3rem;
+    outline: none;
+    background: rgba(0, 0, 0, 0.64);
+    color: #fff;
+    font-family: var(--font-1);
+    font-size: 0.72rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+  .image-embed:hover .image-embed-alt,
+  .image-embed-alt:focus,
+  .image-embed.pending .image-embed-alt {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .image-embed.pending .image-embed-alt {
+    position: static;
+    width: calc(100% - 0.9rem);
+    margin: 0 0.45rem 0.45rem;
+    background: var(--bg-2);
+    color: var(--text-1);
+    border-color: var(--border);
   }
   .notion-editor:not(.code-mode) strong,
   .notion-editor:not(.code-mode) b {

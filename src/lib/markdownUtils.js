@@ -83,7 +83,9 @@ export function markdownToHtml(markdown) {
       let p = inlineMarkdown(trimmed);
       if (trimmed !== "") {
         const isBlock =
-          /^<(h[1-6]|ul|ol|li|blockquote|table|pre|hr|img)[^>]*>/.test(trimmed);
+          /^<(h[1-6]|ul|ol|li|blockquote|table|pre|hr|img|figure)[^>]*>/.test(
+            trimmed,
+          );
         result.push(isBlock ? p : "<p>" + p + "</p>");
       } else {
         result.push("");
@@ -105,11 +107,27 @@ function inlineMarkdown(text) {
     .replace(/~~(.+?)~~/g, "<del>$1</del>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/_([^_\n]+)_/g, "<u>$1</u>")
-    .replace(
-      /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
-      '<img alt="$1" src="$2">',
+    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, (_, alt, src) =>
+      imageEmbedHtml(src, alt),
     )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function imageEmbedHtml(src = "", alt = "") {
+  const safeSrc = escapeAttribute(src);
+  const safeAlt = escapeAttribute(alt);
+  const image = safeSrc
+    ? `<img alt="${safeAlt}" src="${safeSrc}">`
+    : `<div class="image-embed-empty">Image link</div>`;
+  return `<figure class="image-embed ${safeSrc ? "" : "pending"}" contenteditable="false">${image}<div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link" value="${safeSrc}"><button class="image-embed-apply" type="button">Add</button></div><input class="image-embed-alt" type="text" placeholder="Alt text / caption" value="${safeAlt}"></figure>`;
+}
+
+function escapeAttribute(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function normalizeCodeLang(lang) {
@@ -185,9 +203,7 @@ export function htmlToMarkdown(html) {
   if (!html) return "";
   const el = document.createElement("div");
   el.innerHTML = html;
-  return nodeToMd(el)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return nodeToMd(el).replace(/^\n+|\n+$/g, "");
 }
 
 function nodeToMd(node) {
@@ -249,8 +265,13 @@ function nodeToMd(node) {
         node.getAttribute("data-lang") ||
         codeEl.className.match(/language-(\w+)/)?.[1] ||
         "";
-      return "```" + lang + "\n" + codeEl.textContent.trim() + "\n```\n";
+      return "```" + lang + "\n" + codeEl.textContent + "\n```\n";
     }
+    case "figure":
+      if (node.classList.contains("image-embed")) {
+        return imageEmbedToMarkdown(node);
+      }
+      return kids();
     case "ul":
     case "ol":
       return listToMd(node, listDepth(node));
@@ -278,6 +299,20 @@ function nodeToMd(node) {
     default:
       return kids();
   }
+}
+
+function imageEmbedToMarkdown(node) {
+  const img = node.querySelector("img");
+  const url =
+    img?.getAttribute("src") ||
+    node.querySelector(".image-embed-url")?.value ||
+    "";
+  if (!url.trim()) return "";
+  const alt =
+    node.querySelector(".image-embed-alt")?.value ||
+    img?.getAttribute("alt") ||
+    "";
+  return `![${alt}](${url.trim()})\n`;
 }
 
 function listDepth(list) {
