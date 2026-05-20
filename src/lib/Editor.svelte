@@ -101,6 +101,7 @@
   const loadedFonts = new Set();
 
   function loadFont(name) {
+    if (!name) return;
     if (loadedFonts.has(name)) return;
     loadedFonts.add(name);
     const link = document.createElement("link");
@@ -894,6 +895,7 @@
   onMount(() => {
     const savedFont = localStorage.getItem("notes-font") || currentFont;
     currentFont = savedFont;
+    loadFont(currentFontName());
     loadRecentFonts();
 
     const savedTheme = localStorage.getItem("notes-theme");
@@ -2150,6 +2152,7 @@
   }
 
   function selectFont(f) {
+    loadFont(f);
     currentFont = `'${f}', sans-serif`;
     localStorage.setItem("notes-font", currentFont);
     if (editorEl) editorEl.style.fontFamily = currentFont;
