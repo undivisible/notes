@@ -3039,6 +3039,29 @@
           </div>
         </dl>
       </section>
+      <section>
+        <h3>Links</h3>
+        <dl>
+          <div>
+            <dt>Site</dt>
+            <dd>
+              <a href="https://undivisible.dev" target="_blank" rel="noreferrer"
+                >undivisible.dev</a
+              >
+            </dd>
+          </div>
+          <div>
+            <dt>GitHub</dt>
+            <dd>
+              <a
+                href="https://github.com/undivisible/notes"
+                target="_blank"
+                rel="noreferrer">github.com/undivisible/notes</a
+              >
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   </aside>
 {/if}
