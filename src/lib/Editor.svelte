@@ -1245,6 +1245,40 @@
     return null;
   }
 
+  function textOffsetWithin(container, range) {
+    if (!range) return container.textContent?.length || 0;
+    const working = document.createRange();
+    working.selectNodeContents(container);
+    working.setEnd(range.startContainer, range.startOffset);
+    return working.toString().length;
+  }
+
+  function placeCaretInText(container, offset) {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let remaining = offset;
+    let current = walker.nextNode();
+    while (current) {
+      const length = current.textContent.length;
+      if (remaining <= length) {
+        const nextRange = document.createRange();
+        nextRange.setStart(current, remaining);
+        nextRange.collapse(true);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(nextRange);
+        return;
+      }
+      remaining -= length;
+      current = walker.nextNode();
+    }
+    const fallbackRange = document.createRange();
+    fallbackRange.setStart(container, container.childNodes.length);
+    fallbackRange.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(fallbackRange);
+  }
+
   function currentSlashQuery() {
     const sel = window.getSelection();
     if (!sel?.rangeCount || !slashBlock) return null;
@@ -1633,31 +1667,16 @@
 
       if (codeEl) {
         const preEl = codeEl.closest("pre");
+        const codeOffset = textOffsetWithin(codeEl, range);
+        const rawCode = codeEl.textContent || "";
+        const lineStart =
+          rawCode.lastIndexOf("\n", Math.max(0, codeOffset - 1)) + 1;
+        const lineText = rawCode.slice(lineStart, codeOffset).trim();
         // Detect ``` line as exit fence
-        const lineText = (() => {
-          if (startNode?.nodeType === 3) {
-            const lastNl = startNode.textContent.lastIndexOf(
-              "\n",
-              range.startOffset - 1,
-            );
-            return startNode.textContent
-              .slice(lastNl + 1, range.startOffset)
-              .trim();
-          }
-          return "";
-        })();
         if (lineText === "```") {
           e.preventDefault();
-          // Remove the closing ``` from the code block's text
-          if (startNode?.nodeType === 3) {
-            const lastNl = startNode.textContent.lastIndexOf(
-              "\n",
-              range.startOffset - 1,
-            );
-            startNode.textContent =
-              startNode.textContent.slice(0, lastNl === -1 ? 0 : lastNl) +
-              startNode.textContent.slice(range.startOffset);
-          }
+          codeEl.textContent =
+            rawCode.slice(0, lineStart) + rawCode.slice(codeOffset);
           const newP = document.createElement("p");
           newP.innerHTML = "<br>";
           preEl.after(newP);
@@ -1671,7 +1690,9 @@
         }
         // Normal newline inside code block
         e.preventDefault();
-        document.execCommand("insertText", false, "\n");
+        codeEl.textContent =
+          rawCode.slice(0, codeOffset) + "\n" + rawCode.slice(codeOffset);
+        placeCaretInText(codeEl, codeOffset + 1);
         syncContent();
         return;
       }

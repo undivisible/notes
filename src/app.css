@@ -581,7 +581,7 @@
     background: none;
     border: none;
     font-size: 0.875em;
-    line-height: 1.35;
+    line-height: 1.2;
     white-space: pre;
   }
   .notion-editor pre[data-lang]::before {

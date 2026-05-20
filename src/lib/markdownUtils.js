@@ -3,6 +3,7 @@ export function markdownToHtml(markdown) {
   if (!markdown) return "";
 
   let html = escapeHtml(markdown);
+  const codeBlocks = [];
 
   // Fenced code blocks — capture optional language tag
   html = html.replace(/```(\w*)\r?\n?([\s\S]*?)```/g, (_, lang, code) => {
@@ -11,7 +12,9 @@ export function markdownToHtml(markdown) {
       ? ` class="language-${normalizedLang}"`
       : "";
     const langAttr = normalizedLang ? ` data-lang="${normalizedLang}"` : "";
-    return `<pre${langAttr}><code${langClass}>${code}</code></pre>`;
+    const token = `NOTESCODEBLOCKTOKEN${codeBlocks.length}`;
+    codeBlocks.push(`<pre${langAttr}><code${langClass}>${code}</code></pre>`);
+    return token;
   });
 
   // Strikethrough
@@ -87,7 +90,12 @@ export function markdownToHtml(markdown) {
       }
     }
   }
-  return result.join("\n");
+  let output = result.join("\n");
+  codeBlocks.forEach((block, index) => {
+    output = output.replace(`<p>NOTESCODEBLOCKTOKEN${index}</p>`, block);
+    output = output.replace(`NOTESCODEBLOCKTOKEN${index}`, block);
+  });
+  return output;
 }
 
 function inlineMarkdown(text) {
