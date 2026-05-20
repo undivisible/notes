@@ -599,6 +599,10 @@
     }
   }
 
+  function clearSharedContentUrl() {
+    window.history.replaceState(null, "", window.location.origin + "/");
+  }
+
   function loadSharedContentIfPresent() {
     const sharedContent = sharedContentFromUrl();
     if (sharedContent === null) return false;
@@ -608,7 +612,7 @@
     clearTimeout(saveTimeout);
     localStorage.setItem(tabKey(id), sharedContent);
     _saveTabs();
-    window.history.replaceState(null, "", window.location.pathname || "/");
+    clearSharedContentUrl();
     return true;
   }
 
