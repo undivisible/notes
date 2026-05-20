@@ -167,6 +167,7 @@
   let showTheme = $state(false);
   let showFont = $state(false);
   let showSearch = $state(false);
+  let shareCopied = $state(false);
   let fontSearch = $state("");
   let docSearch = $state("");
   let docSearchIndex = $state(0);
@@ -370,7 +371,11 @@
     { id: "csv", label: "CSV", aliases: [] },
     { id: "wasm", label: "WebAssembly", aliases: ["wat"] },
     { id: "css", label: "CSS", aliases: [] },
-    { id: "markup", label: "HTML / XML / SVG", aliases: ["html", "xml", "svg"] },
+    {
+      id: "markup",
+      label: "HTML / XML / SVG",
+      aliases: ["html", "xml", "svg"],
+    },
   ];
 
   let langSearch = $state("");
@@ -513,13 +518,16 @@
         ".cm-gutterElement": {
           lineHeight: "1.6",
         },
-        ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)" },
+        ".cm-activeLine": {
+          backgroundColor: "color-mix(in srgb, var(--accent) 12%, transparent)",
+        },
         ".cm-activeLineGutter": {
           backgroundColor: "color-mix(in srgb, var(--accent) 16%, transparent)",
           color: "var(--text-1)",
         },
         ".cm-selectionBackground, .cm-content ::selection": {
-          backgroundColor: "color-mix(in srgb, var(--accent) 34%, transparent) !important",
+          backgroundColor:
+            "color-mix(in srgb, var(--accent) 34%, transparent) !important",
         },
         ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--accent)" },
       }),
@@ -558,6 +566,49 @@
     const legacy = localStorage.getItem("notes-content");
     if (legacy) localStorage.setItem(tabKey(id), legacy);
     _saveTabs();
+  }
+
+  function encodeSharedContent(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+  }
+
+  function decodeSharedContent(value) {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function sharedContentFromPath() {
+    const value = window.location.pathname.replace(/^\/+/, "").trim();
+    if (!value) return null;
+    try {
+      return decodeSharedContent(decodeURIComponent(value));
+    } catch {
+      return null;
+    }
+  }
+
+  function loadSharedContentIfPresent() {
+    const sharedContent = sharedContentFromPath();
+    if (sharedContent === null) return false;
+    const id = newTabId();
+    tabs = [{ id, title: "Shared note" }];
+    activeTabId = id;
+    localStorage.setItem(tabKey(id), sharedContent);
+    localStorage.setItem("notes-tabs", JSON.stringify(tabs));
+    localStorage.setItem("notes-active-tab", activeTabId);
+    window.history.replaceState(null, "", "/");
+    return true;
   }
 
   function _saveTabs() {
@@ -834,7 +885,7 @@
       document.body.className = "theme-" + savedTheme;
     } else document.body.className = "theme-" + currentTheme;
 
-    loadTabs();
+    if (!loadSharedContentIfPresent()) loadTabs();
     _loadTabContent(activeTabId);
   });
 
@@ -1098,7 +1149,9 @@
     const sel = window.getSelection();
     const codeMode = isCodeDocument();
     editorEl.querySelectorAll("pre code").forEach((block) => {
-      const isFocusedBlock = Boolean(sel?.focusNode && block.contains(sel.focusNode));
+      const isFocusedBlock = Boolean(
+        sel?.focusNode && block.contains(sel.focusNode),
+      );
       // Keep markdown editing stable by not re-highlighting the focused block.
       // In full-page code mode, we do re-highlight and restore caret position.
       if (!codeMode && isFocusedBlock) return;
@@ -1117,7 +1170,8 @@
       }
       block.textContent = raw;
       if (!block.className) {
-        const lang = normalizeLang(pre?.getAttribute("data-lang")) || detectLanguage(raw);
+        const lang =
+          normalizeLang(pre?.getAttribute("data-lang")) || detectLanguage(raw);
         if (lang) {
           pre?.setAttribute("data-lang", lang);
           if (lang !== "none") block.className = `language-${lang}`;
@@ -2010,6 +2064,21 @@
     );
   }
 
+  async function copyShareLink() {
+    localStorage.setItem(tabKey(activeTabId), activeMarkdown());
+    const encoded = encodeSharedContent(activeMarkdown());
+    const url = `${window.location.origin}/${encoded}`;
+    await navigator.clipboard.writeText(url);
+    shareCopied = true;
+    setTimeout(() => {
+      shareCopied = false;
+    }, 1200);
+  }
+
+  function shareTooltipLabel() {
+    return shareCopied ? "Copied link" : "Copy share link";
+  }
+
   function downloadTooltipLabel() {
     if (isCodeDocument()) {
       const ext = activeFileExtension() || "txt";
@@ -2072,6 +2141,7 @@
             showTheme = !showTheme;
             showFont = false;
             showExport = false;
+            shareCopied = false;
           }}
           title="Theme"
         >
@@ -2115,6 +2185,7 @@
             }
             showTheme = false;
             showExport = false;
+            shareCopied = false;
           }}
           title="Font"
         >
@@ -2339,6 +2410,7 @@
             showExport = !showExport;
             showTheme = false;
             showFont = false;
+            shareCopied = false;
           }}
           title="Export"
         >
@@ -2407,6 +2479,25 @@
           </div>
         {/if}
       </div>
+
+      <button
+        class="sidebar-icon"
+        onclick={copyShareLink}
+        title={shareTooltipLabel()}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><path
+            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+          /><path
+            d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+          /></svg
+        >
+        <span class="tooltip">{shareTooltipLabel()}</span>
+      </button>
 
       <button
         class="sidebar-icon"
