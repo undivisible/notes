@@ -168,6 +168,7 @@
   let showTheme = $state(false);
   let showFont = $state(false);
   let showSearch = $state(false);
+  let showHelp = $state(false);
   let shareCopied = $state(false);
   let fontSearch = $state("");
   let docSearch = $state("");
@@ -604,11 +605,10 @@
     const sharedContent = sharedContentFromUrl();
     if (sharedContent === null) return false;
     const id = newTabId();
-    tabs = [{ id, title: "Shared note" }];
+    tabs = [...tabs, { id, title: "Shared note" }];
     activeTabId = id;
     localStorage.setItem(tabKey(id), sharedContent);
-    localStorage.setItem("notes-tabs", JSON.stringify(tabs));
-    localStorage.setItem("notes-active-tab", activeTabId);
+    _saveTabs();
     window.history.replaceState(null, "", "/");
     return true;
   }
@@ -888,7 +888,8 @@
       document.body.className = "theme-" + savedTheme;
     } else document.body.className = "theme-" + currentTheme;
 
-    if (!loadSharedContentIfPresent()) loadTabs();
+    loadTabs();
+    loadSharedContentIfPresent();
     _loadTabContent(activeTabId);
   });
 
@@ -1857,6 +1858,14 @@
   }
 
   function handleWindowKeydown(e) {
+    if (e.key === "F1") {
+      e.preventDefault();
+      showHelp = !showHelp;
+      showExport = false;
+      showTheme = false;
+      showFont = false;
+      return;
+    }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
       openSearch();
@@ -1879,6 +1888,8 @@
     if (e.key === "Escape") {
       if (showSearch) {
         closeSearch();
+      } else if (showHelp) {
+        showHelp = false;
       } else if (renamingTabId) {
         renamingTabId = null;
       } else closeAll();
@@ -2034,6 +2045,7 @@
     showExport = false;
     showTheme = false;
     showFont = false;
+    showHelp = false;
   }
 
   function changeTheme(t) {
@@ -2134,7 +2146,11 @@
   onkeydown={handleWindowKeydown}
   onselectionchange={handleSelectionChange}
   onclick={(e) => {
-    if (!e.target.closest(".popout-wrap") && !e.target.closest(".font-search"))
+    if (
+      !e.target.closest(".popout-wrap") &&
+      !e.target.closest(".font-search") &&
+      !e.target.closest(".help-modal")
+    )
       closeAll();
     if (!e.target.closest(".slash-menu")) showSlash = false;
     if (
@@ -2568,6 +2584,28 @@
     </div>
 
     <div class="sidebar-footer">
+      <button
+        class="sidebar-icon"
+        onclick={(e) => {
+          e.stopPropagation();
+          showHelp = !showHelp;
+          showExport = false;
+          showTheme = false;
+          showFont = false;
+        }}
+        title="Help"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><circle cx="12" cy="12" r="10" /><path
+            d="M9.09 9a3 3 0 1 1 5.82 1c-.52.88-1.64 1.31-2.24 2.05-.37.46-.5.9-.5 1.45"
+          /><circle cx="12" cy="17" r=".6" fill="currentColor" /></svg
+        >
+        <span class="tooltip">Help (F1)</span>
+      </button>
       {#if isSaving}
         <svg
           class="spin"
@@ -2756,6 +2794,184 @@
         >
       </button>
     {/if}
+  </div>
+{/if}
+
+{#if showHelp}
+  <button
+    class="help-backdrop"
+    type="button"
+    aria-label="Close help"
+    onclick={() => {
+      showHelp = false;
+    }}
+  ></button>
+  <div
+    class="help-modal"
+    role="dialog"
+    aria-label="Commands and markdown shortcuts"
+  >
+    <div class="help-head">
+      <div>
+        <h2>Help</h2>
+        <p>Commands and markdown shortcuts</p>
+      </div>
+      <button
+        class="help-close"
+        type="button"
+        aria-label="Close help"
+        onclick={() => {
+          showHelp = false;
+        }}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><line x1="18" y1="6" x2="6" y2="18" /><line
+            x1="6"
+            y1="6"
+            x2="18"
+            y2="18"
+          /></svg
+        >
+      </button>
+    </div>
+    <div class="help-grid">
+      <section>
+        <h3>Keys</h3>
+        <dl>
+          <div>
+            <dt>F1</dt>
+            <dd>Open help</dd>
+          </div>
+          <div>
+            <dt>⌘K</dt>
+            <dd>Search open notes</dd>
+          </div>
+          <div>
+            <dt>⌘T</dt>
+            <dd>New note</dd>
+          </div>
+          <div>
+            <dt>⌘W</dt>
+            <dd>Close note</dd>
+          </div>
+          <div>
+            <dt>⌘↵</dt>
+            <dd>Export menu</dd>
+          </div>
+          <div>
+            <dt>Tab</dt>
+            <dd>Indent list item</dd>
+          </div>
+          <div>
+            <dt>⇧Tab</dt>
+            <dd>Outdent list item</dd>
+          </div>
+        </dl>
+      </section>
+      <section>
+        <h3>Toolbar</h3>
+        <dl>
+          <div>
+            <dt>⌘B</dt>
+            <dd>Bold</dd>
+          </div>
+          <div>
+            <dt>⌘I</dt>
+            <dd>Italic</dd>
+          </div>
+          <div>
+            <dt>⌘U</dt>
+            <dd>Underline</dd>
+          </div>
+          <div>
+            <dt>⌘H</dt>
+            <dd>Heading</dd>
+          </div>
+          <div>
+            <dt>/</dt>
+            <dd>Block menu</dd>
+          </div>
+          <div>
+            <dt>Link</dt>
+            <dd>Copy share URL</dd>
+          </div>
+          <div>
+            <dt>Image</dt>
+            <dd>Embed external image URL</dd>
+          </div>
+        </dl>
+      </section>
+      <section>
+        <h3>Markdown</h3>
+        <dl>
+          <div>
+            <dt>#</dt>
+            <dd>Heading 1</dd>
+          </div>
+          <div>
+            <dt>##</dt>
+            <dd>Heading 2</dd>
+          </div>
+          <div>
+            <dt>###</dt>
+            <dd>Heading 3</dd>
+          </div>
+          <div>
+            <dt>- or *</dt>
+            <dd>Bullet list</dd>
+          </div>
+          <div>
+            <dt>1.</dt>
+            <dd>Numbered list</dd>
+          </div>
+          <div>
+            <dt>&gt;</dt>
+            <dd>Quote</dd>
+          </div>
+          <div>
+            <dt>---</dt>
+            <dd>Divider</dd>
+          </div>
+        </dl>
+      </section>
+      <section>
+        <h3>Inline</h3>
+        <dl>
+          <div>
+            <dt>**text**</dt>
+            <dd>Bold</dd>
+          </div>
+          <div>
+            <dt>*text*</dt>
+            <dd>Italic</dd>
+          </div>
+          <div>
+            <dt>_text_</dt>
+            <dd>Underline</dd>
+          </div>
+          <div>
+            <dt>`code`</dt>
+            <dd>Inline code</dd>
+          </div>
+          <div>
+            <dt>~~text~~</dt>
+            <dd>Strikethrough</dd>
+          </div>
+          <div>
+            <dt>```js</dt>
+            <dd>Code block on Enter</dd>
+          </div>
+          <div>
+            <dt>![alt](url)</dt>
+            <dd>External image embed</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
   </div>
 {/if}
 
