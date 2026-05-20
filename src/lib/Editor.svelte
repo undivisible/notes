@@ -1896,7 +1896,15 @@
     if (isCodeDocument()) return;
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+    const shouldRenderMarkdown =
+      /^\s*[*+-]\s+\S/m.test(text) ||
+      /^\s*\d+\.\s+\S/m.test(text) ||
+      /!\[[^\]]*\]\(https?:\/\/[^)\s]+\)/.test(text);
+    document.execCommand(
+      shouldRenderMarkdown ? "insertHTML" : "insertText",
+      false,
+      shouldRenderMarkdown ? markdownToHtml(text) : text,
+    );
     syncContent();
   }
 
@@ -2003,6 +2011,29 @@
         sel.addRange(nr);
       }
     }
+    syncContent();
+  }
+
+  function escapeAttribute(value) {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function applyImage() {
+    if (!editorEl) return;
+    const src = prompt("Image URL");
+    const trimmedSrc = src?.trim() || "";
+    if (!/^https?:\/\//i.test(trimmedSrc)) return;
+    const alt = prompt("Alt text") || "";
+    editorEl.focus();
+    document.execCommand(
+      "insertHTML",
+      false,
+      `<img src="${escapeAttribute(trimmedSrc)}" alt="${escapeAttribute(alt)}">`,
+    );
     syncContent();
   }
 
@@ -2397,6 +2428,23 @@
             points="8 6 2 12 8 18"
           /></svg
         ><span class="tooltip">Code</span></button
+      >
+      <button
+        class="sidebar-icon"
+        onmousedown={(e) => e.preventDefault()}
+        onclick={applyImage}
+        title="Image"
+        ><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          ><rect x="3" y="3" width="18" height="18" rx="2" /><circle
+            cx="8.5"
+            cy="8.5"
+            r="1.5"
+          /><path d="M21 15l-5-5L5 21" /></svg
+        ><span class="tooltip">Image URL</span></button
       >
 
       <div class="sb-divider"></div>

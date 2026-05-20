@@ -22,6 +22,7 @@ export default [
         localStorage: "readonly",
         navigator: "readonly",
         NodeFilter: "readonly",
+        prompt: "readonly",
         requestAnimationFrame: "readonly",
         require: "readonly",
         setTimeout: "readonly",

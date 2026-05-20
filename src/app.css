@@ -529,6 +529,16 @@
     text-decoration: underline;
     text-underline-offset: 2px;
   }
+  .notion-editor:not(.code-mode) img {
+    display: block;
+    max-width: 100%;
+    max-height: min(620px, 70vh);
+    margin: 0.9rem 0;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--bg-3);
+    object-fit: contain;
+  }
   .notion-editor:not(.code-mode) strong,
   .notion-editor:not(.code-mode) b {
     font-weight: 700;

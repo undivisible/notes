@@ -102,10 +102,14 @@ export function markdownToHtml(markdown) {
         .replace(/~~(.+?)~~/g, "<del>$1</del>")
         .replace(/\*(.+?)\*/g, "<em>$1</em>")
         .replace(/_(.+?)_/g, "<em>$1</em>")
+        .replace(
+          /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
+          '<img alt="$1" src="$2">',
+        )
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
       if (trimmed !== "") {
         const isBlock =
-          /^<(h[1-6]|ul|ol|li|blockquote|table|pre|hr)[^>]*>/.test(trimmed);
+          /^<(h[1-6]|ul|ol|li|blockquote|table|pre|hr|img)[^>]*>/.test(trimmed);
         result.push(isBlock ? p : "<p>" + p + "</p>");
       } else {
         result.push("");
