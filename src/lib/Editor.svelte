@@ -607,9 +607,10 @@
     const id = newTabId();
     tabs = [...tabs, { id, title: "Shared note" }];
     activeTabId = id;
+    clearTimeout(saveTimeout);
     localStorage.setItem(tabKey(id), sharedContent);
     _saveTabs();
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", window.location.pathname || "/");
     return true;
   }
 
@@ -898,10 +899,10 @@
   });
 
   let saveTimeout;
-  function debouncedSave(md) {
+  function debouncedSave(md, id = activeTabId) {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
-      localStorage.setItem(tabKey(activeTabId), md);
+      localStorage.setItem(tabKey(id), md);
       _saveTabs();
       isSaving = true;
       lastSaved = new Date().toLocaleTimeString([], {
@@ -1277,6 +1278,35 @@
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(fallbackRange);
+  }
+
+  function placeInEmptyBlock(block) {
+    const nextRange = document.createRange();
+    nextRange.setStart(block, 0);
+    nextRange.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(nextRange);
+  }
+
+  function emptyParagraph() {
+    const p = document.createElement("p");
+    p.innerHTML = "<br>";
+    return p;
+  }
+
+  function isAtStartOfElement(element, range) {
+    if (!element || !range?.collapsed) return false;
+    const working = document.createRange();
+    working.selectNodeContents(element);
+    working.setEnd(range.startContainer, range.startOffset);
+    return working.toString().length === 0;
+  }
+
+  function insertEmptyLineBefore(element) {
+    const p = emptyParagraph();
+    element.before(p);
+    placeInEmptyBlock(p);
   }
 
   function currentSlashQuery() {
@@ -1688,6 +1718,12 @@
         const preEl = codeEl.closest("pre");
         const codeOffset = textOffsetWithin(codeEl, range);
         const rawCode = codeEl.textContent || "";
+        if (codeOffset === 0) {
+          e.preventDefault();
+          insertEmptyLineBefore(preEl);
+          syncContent();
+          return;
+        }
         const lineStart =
           rawCode.lastIndexOf("\n", Math.max(0, codeOffset - 1)) + 1;
         const lineText = rawCode.slice(lineStart, codeOffset).trim();
@@ -1768,8 +1804,15 @@
         }
       }
 
-      // Exit headings / blockquote on Enter when at end of non-empty block
       if (block) {
+        if (isAtStartOfElement(block, range)) {
+          e.preventDefault();
+          insertEmptyLineBefore(block);
+          syncContent();
+          return;
+        }
+
+        // Exit headings / blockquote on Enter when at end of non-empty block
         const tag = block.tagName.toLowerCase();
         if (["h1", "h2", "h3", "h4", "h5", "h6", "blockquote"].includes(tag)) {
           const atEnd =
@@ -1936,18 +1979,107 @@
     }
   }
 
+  function fragmentFromChildren(node) {
+    const fragment = document.createDocumentFragment();
+    node.childNodes.forEach((child) => {
+      const clean = cleanPastedNode(child);
+      if (clean) fragment.appendChild(clean);
+    });
+    return fragment;
+  }
+
+  function cleanPastedNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return document.createTextNode(node.textContent || "");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const tag = node.tagName.toLowerCase();
+    if (["script", "style", "meta", "link", "iframe", "object"].includes(tag)) {
+      return document.createDocumentFragment();
+    }
+
+    if (tag === "span") {
+      const style = node.getAttribute("style") || "";
+      const weight = style.match(/font-weight:\s*([^;]+)/i)?.[1] || "";
+      const isBold =
+        /bold|bolder/i.test(weight) || Number.parseInt(weight, 10) >= 600;
+      const isItalic = /font-style:\s*italic/i.test(style);
+      const isUnderline = /text-decoration[^;]*underline/i.test(style);
+      const replacement = isBold
+        ? "strong"
+        : isItalic
+          ? "em"
+          : isUnderline
+            ? "u"
+            : null;
+      if (replacement) {
+        const el = document.createElement(replacement);
+        el.appendChild(fragmentFromChildren(node));
+        return el;
+      }
+      return fragmentFromChildren(node);
+    }
+
+    const normalizedTag = tag === "div" ? "p" : tag;
+    const allowed = [
+      "a",
+      "b",
+      "blockquote",
+      "br",
+      "code",
+      "del",
+      "em",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "i",
+      "li",
+      "ol",
+      "p",
+      "pre",
+      "s",
+      "strong",
+      "u",
+      "ul",
+    ];
+    if (!allowed.includes(normalizedTag)) return fragmentFromChildren(node);
+
+    const el = document.createElement(normalizedTag);
+    if (normalizedTag === "br") return el;
+    if (normalizedTag === "a") {
+      const href = node.getAttribute("href") || "";
+      if (/^https?:\/\//i.test(href)) el.setAttribute("href", href);
+    }
+    el.appendChild(fragmentFromChildren(node));
+    return el;
+  }
+
+  function sanitizePastedHtml(html) {
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const clean = document.createElement("div");
+    clean.appendChild(fragmentFromChildren(wrapper));
+    return clean.innerHTML;
+  }
+
   function handlePaste(e) {
     if (isCodeDocument()) return;
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
+    const html = e.clipboardData.getData("text/html");
     const shouldRenderMarkdown =
       /^\s*[*+-]\s+\S/m.test(text) ||
       /^\s*\d+\.\s+\S/m.test(text) ||
       /!\[[^\]]*\]\(https?:\/\/[^)\s]+\)/.test(text);
+    const richHtml = html ? sanitizePastedHtml(html) : "";
     document.execCommand(
-      shouldRenderMarkdown ? "insertHTML" : "insertText",
+      shouldRenderMarkdown || richHtml ? "insertHTML" : "insertText",
       false,
-      shouldRenderMarkdown ? markdownToHtml(text) : text,
+      shouldRenderMarkdown ? markdownToHtml(text) : richHtml || text,
     );
     syncContent();
   }

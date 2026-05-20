@@ -21,6 +21,7 @@ export default [
         IntersectionObserver: "readonly",
         localStorage: "readonly",
         navigator: "readonly",
+        Node: "readonly",
         NodeFilter: "readonly",
         requestAnimationFrame: "readonly",
         require: "readonly",
