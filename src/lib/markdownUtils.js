@@ -13,7 +13,10 @@ export function markdownToHtml(markdown) {
       : "";
     const langAttr = normalizedLang ? ` data-lang="${normalizedLang}"` : "";
     const token = `NOTESCODEBLOCKTOKEN${codeBlocks.length}`;
-    codeBlocks.push(`<pre${langAttr}><code${langClass}>${code}</code></pre>`);
+    const codeText = code.replace(/\r?\n$/, "");
+    codeBlocks.push(
+      `<pre${langAttr}><code${langClass}>${codeText}</code></pre>`,
+    );
     return token;
   });
 
@@ -238,7 +241,11 @@ export function htmlToMarkdown(html) {
 }
 
 function nodeToMd(node) {
-  if (node.nodeType === 3) return node.textContent;
+  if (node.nodeType === 3) {
+    const parentTag = node.parentElement?.tagName.toLowerCase();
+    if (parentTag === "div" && /^\s+$/.test(node.textContent)) return "";
+    return node.textContent;
+  }
   if (node.nodeType !== 1) return "";
   const tag = node.tagName.toLowerCase();
   const kids = () => Array.from(node.childNodes).map(nodeToMd).join("");
@@ -248,6 +255,7 @@ function nodeToMd(node) {
     case "div":
     case "p": {
       const t = text();
+      if (!t && isAdjacentToImageEmbed(node)) return "";
       return t ? t + "\n" : "\n";
     }
     case "br":
@@ -296,7 +304,8 @@ function nodeToMd(node) {
         node.getAttribute("data-lang") ||
         codeEl.className.match(/language-(\w+)/)?.[1] ||
         "";
-      return "```" + lang + "\n" + codeEl.textContent + "\n```\n";
+      const code = codeEl.textContent.replace(/\n$/, "");
+      return "```" + lang + "\n" + code + "\n```\n";
     }
     case "figure":
       if (node.classList.contains("image-embed")) {
@@ -330,6 +339,13 @@ function nodeToMd(node) {
     default:
       return kids();
   }
+}
+
+function isAdjacentToImageEmbed(node) {
+  return (
+    node.previousElementSibling?.classList.contains("image-embed") ||
+    node.nextElementSibling?.classList.contains("image-embed")
+  );
 }
 
 function imageEmbedToMarkdown(node) {

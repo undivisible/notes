@@ -549,6 +549,11 @@
     border-radius: 0.5rem;
     background: var(--bg-3);
   }
+  .notion-editor:not(.code-mode) p:empty:has(+ .image-embed),
+  .notion-editor:not(.code-mode) .image-embed + p:empty {
+    display: none;
+    margin: 0;
+  }
   .notion-editor:not(.code-mode) .image-embed.pending {
     @apply inline-flex items-center;
     width: min(28rem, 100%);
