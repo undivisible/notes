@@ -32,7 +32,7 @@ export function markdownToHtml(markdown) {
   html = html.replace(/^# (.*)$/gm, "<h1>$1</h1>");
 
   // Horizontal rule
-  html = html.replace(/^---$/gm, "<hr>");
+  html = html.replace(/^\s*-{3,}\s*$/gm, "<hr>");
 
   // Blockquotes
   html = html.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>");

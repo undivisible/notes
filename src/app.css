@@ -513,8 +513,9 @@
   }
   .notion-editor:not(.code-mode) hr {
     border: none;
-    border-top: 1px solid var(--border);
+    height: 1px;
     margin: 1.25rem 0;
+    background: var(--border);
   }
   .notion-editor:not(.code-mode) table {
     border-collapse: collapse;
