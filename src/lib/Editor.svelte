@@ -621,7 +621,21 @@
     if (isCodeDocument()) {
       return readCodeDocument();
     }
+    cleanupImageEmbedSpacing();
     return htmlToMarkdown(editorEl?.innerHTML || "");
+  }
+
+  function cleanupImageEmbedSpacing() {
+    if (!editorEl) return;
+    editorEl.querySelectorAll("p").forEach((p) => {
+      if (p.textContent.trim()) return;
+      if (
+        p.previousElementSibling?.classList.contains("image-embed") ||
+        p.nextElementSibling?.classList.contains("image-embed")
+      ) {
+        p.remove();
+      }
+    });
   }
 
   function _loadTabContent(id) {
@@ -635,6 +649,7 @@
       } else {
         destroyCodeEditor();
         editorEl.innerHTML = saved ? markdownToHtml(saved) : "";
+        requestAnimationFrame(cleanupImageEmbedSpacing);
         requestAnimationFrame(applyPrism);
         scheduleHighlight();
       }
