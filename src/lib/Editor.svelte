@@ -1520,7 +1520,20 @@
   }
 
   // ── Input handler ──
-  function handleInput() {
+  function syncImageEmbedInputs(target) {
+    const embed = target?.closest?.(".image-embed");
+    if (!embed) return;
+    if (target.classList.contains("image-embed-alt")) {
+      const img = embed.querySelector("img");
+      if (img) img.alt = target.value || "";
+    }
+    if (target.classList.contains("image-embed-caption")) {
+      embed.dataset.caption = target.value || "";
+    }
+  }
+
+  function handleInput(e) {
+    syncImageEmbedInputs(e?.target);
     // Track slash query if menu is open
     if (showSlash) {
       const nextQuery = currentSlashQuery();
@@ -1540,7 +1553,6 @@
     if (!button) return;
     const embed = button.closest(".image-embed");
     const urlInput = embed?.querySelector(".image-embed-url");
-    const altInput = embed?.querySelector(".image-embed-alt");
     const url = urlInput?.value?.trim() || "";
     if (!embed || !/^https?:\/\//i.test(url)) return;
     let img = embed.querySelector("img");
@@ -1549,9 +1561,40 @@
       embed.querySelector(".image-embed-empty")?.replaceWith(img);
     }
     img.src = url;
-    img.alt = altInput?.value || "";
+    img.alt = "";
+    if (!embed.querySelector(".image-embed-meta")) {
+      const meta = document.createElement("div");
+      meta.className = "image-embed-meta";
+      meta.innerHTML = `<input class="image-embed-alt" type="text" placeholder="Alt text"><input class="image-embed-caption" type="text" placeholder="Caption">`;
+      embed.appendChild(meta);
+    }
     embed.classList.remove("pending");
     syncContent();
+  }
+
+  function handleEditorPointerDown(e) {
+    const embed = e.target.closest?.(".image-embed:not(.pending)");
+    if (!embed) return;
+    const rect = embed.getBoundingClientRect();
+    if (rect.right - e.clientX > 28 || rect.bottom - e.clientY > 28) return;
+    embed.dataset.resizing = "true";
+  }
+
+  function handleWindowPointerUp() {
+    if (!editorEl) return;
+    let changed = false;
+    editorEl
+      .querySelectorAll('.image-embed[data-resizing="true"]')
+      .forEach((embed) => {
+        delete embed.dataset.resizing;
+        const width = Math.round(embed.getBoundingClientRect().width);
+        if (width > 0) {
+          embed.dataset.width = String(Math.min(1200, Math.max(120, width)));
+          embed.style.width = `${embed.dataset.width}px`;
+          changed = true;
+        }
+      });
+    if (changed) syncContent();
   }
 
   // ── Execute slash command ──
@@ -2196,8 +2239,11 @@
     document.execCommand(
       "insertHTML",
       false,
-      `<figure class="image-embed pending" contenteditable="false"><div class="image-embed-empty">Image link</div><div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link"><button class="image-embed-apply" type="button">Add</button></div><input class="image-embed-alt" type="text" placeholder="Alt text / caption"></figure>`,
+      `<figure class="image-embed pending" contenteditable="false"><div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link"><button class="image-embed-apply" type="button">Add</button></div></figure>`,
     );
+    requestAnimationFrame(() => {
+      editorEl?.querySelector(".image-embed.pending .image-embed-url")?.focus();
+    });
     syncContent();
   }
 
@@ -2304,12 +2350,13 @@
 
 <svelte:window
   onkeydown={handleWindowKeydown}
+  onpointerup={handleWindowPointerUp}
   onselectionchange={handleSelectionChange}
   onclick={(e) => {
     if (
       !e.target.closest(".popout-wrap") &&
       !e.target.closest(".font-search") &&
-      !e.target.closest(".help-modal")
+      !e.target.closest(".help-panel")
     )
       closeAll();
     if (!e.target.closest(".slash-menu")) showSlash = false;
@@ -2870,6 +2917,7 @@
           : ''}"
         oninput={handleInput}
         onclick={handleEditorClick}
+        onpointerdown={handleEditorPointerDown}
         onkeydown={handleKeydown}
         onpaste={handlePaste}
         onfocusout={handleFocusOut}
@@ -2959,19 +3007,7 @@
 {/if}
 
 {#if showHelp}
-  <button
-    class="help-backdrop"
-    type="button"
-    aria-label="Close help"
-    onclick={() => {
-      showHelp = false;
-    }}
-  ></button>
-  <div
-    class="help-modal"
-    role="dialog"
-    aria-label="Commands and markdown shortcuts"
-  >
+  <aside class="help-panel" aria-label="Commands and markdown shortcuts">
     <div class="help-head">
       <div>
         <h2>Help</h2>
@@ -3133,7 +3169,7 @@
         </dl>
       </section>
     </div>
-  </div>
+  </aside>
 {/if}
 
 {#if !isCodeDocument() && activePre && activePreRect}

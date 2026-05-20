@@ -107,19 +107,27 @@ function inlineMarkdown(text) {
     .replace(/~~(.+?)~~/g, "<del>$1</del>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/_([^_\n]+)_/g, "<u>$1</u>")
-    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, (_, alt, src) =>
-      imageEmbedHtml(src, alt),
+    .replace(
+      /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)(?:\s*(?:<!--\s*([^>]*)\s*-->|&lt;!--\s*([^&]*)&gt;))?/g,
+      (_, alt, src, meta, escapedMeta) => {
+        const parsed = parseImageMeta(meta || escapedMeta || "");
+        return imageEmbedHtml(src, alt, parsed.width, parsed.caption);
+      },
     )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 }
 
-function imageEmbedHtml(src = "", alt = "") {
+function imageEmbedHtml(src = "", alt = "", width = "", caption = "") {
   const safeSrc = escapeAttribute(src);
   const safeAlt = escapeAttribute(alt);
-  const image = safeSrc
-    ? `<img alt="${safeAlt}" src="${safeSrc}">`
-    : `<div class="image-embed-empty">Image link</div>`;
-  return `<figure class="image-embed ${safeSrc ? "" : "pending"}" contenteditable="false">${image}<div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link" value="${safeSrc}"><button class="image-embed-apply" type="button">Add</button></div><input class="image-embed-alt" type="text" placeholder="Alt text / caption" value="${safeAlt}"></figure>`;
+  const safeCaption = escapeAttribute(caption);
+  const safeWidth = sanitizeImageWidth(width);
+  const widthAttrs = safeWidth
+    ? ` data-width="${safeWidth}" style="width: ${safeWidth}px;"`
+    : "";
+  const captionAttr = safeCaption ? ` data-caption="${safeCaption}"` : "";
+  const image = safeSrc ? `<img alt="${safeAlt}" src="${safeSrc}">` : "";
+  return `<figure class="image-embed ${safeSrc ? "" : "pending"}" contenteditable="false"${widthAttrs}${captionAttr}>${image}<div class="image-embed-controls"><input class="image-embed-url" type="url" placeholder="Image link" value="${safeSrc}"><button class="image-embed-apply" type="button">Add</button></div><div class="image-embed-meta"><input class="image-embed-alt" type="text" placeholder="Alt text" value="${safeAlt}"><input class="image-embed-caption" type="text" placeholder="Caption" value="${safeCaption}"></div></figure>`;
 }
 
 function escapeAttribute(value) {
@@ -128,6 +136,29 @@ function escapeAttribute(value) {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function sanitizeImageWidth(value) {
+  const width = Number.parseInt(value, 10);
+  if (!Number.isFinite(width)) return "";
+  return String(Math.min(1200, Math.max(120, width)));
+}
+
+function parseImageMeta(value) {
+  const width =
+    value.match(/\bimage-width=(\d+)/)?.[1] ||
+    value.match(/\bwidth=(\d+)/)?.[1] ||
+    "";
+  const rawCaption = value.match(/\bimage-caption=([^\s]+)/)?.[1] || "";
+  let caption = "";
+  if (rawCaption) {
+    try {
+      caption = decodeURIComponent(rawCaption);
+    } catch {
+      caption = "";
+    }
+  }
+  return { width, caption };
 }
 
 function normalizeCodeLang(lang) {
@@ -312,7 +343,16 @@ function imageEmbedToMarkdown(node) {
     node.querySelector(".image-embed-alt")?.value ||
     img?.getAttribute("alt") ||
     "";
-  return `![${alt}](${url.trim()})\n`;
+  const caption =
+    node.querySelector(".image-embed-caption")?.value ||
+    node.dataset.caption ||
+    "";
+  const width = sanitizeImageWidth(node.dataset.width || "");
+  const meta = [
+    width ? `image-width=${width}` : "",
+    caption ? `image-caption=${encodeURIComponent(caption)}` : "",
+  ].filter(Boolean);
+  return `![${alt}](${url.trim()})${meta.length ? ` <!-- ${meta.join(" ")} -->` : ""}\n`;
 }
 
 function listDepth(list) {
