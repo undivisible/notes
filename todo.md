@@ -1,3 +1,0 @@
-- [x] fix numbered and bulleted lists not showing the bullets or numbers
-- [x] code editing
-- [x] fix code highlighting
