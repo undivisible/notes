@@ -5,7 +5,7 @@ use syntect::highlighting::ThemeSet;
 use syntect::util::LinesWithEndings;
 
 thread_local! {
-    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
+    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_nonewlines();
     static THEME_SET: ThemeSet = ThemeSet::load_defaults();
 }
 
@@ -46,36 +46,27 @@ fn resolve_language<'a>(ss: &'a SyntaxSet, lang: &str) -> &'a syntect::parsing::
     let name_map: &[(&str, &str)] = &[
         ("js", "JavaScript"), ("javascript", "JavaScript"),
         ("ts", "TypeScript"), ("typescript", "TypeScript"),
-        ("jsx", "JavaScript (JSX)"),
-        ("tsx", "TypeScriptReact"), ("tsx", "TypeScript (TSX)"),
+        ("jsx", "JSX"),
+        ("tsx", "TSX"),
         ("py", "Python"), ("python", "Python"),
         ("rs", "Rust"), ("rust", "Rust"),
         ("go", "Go"), ("golang", "Go"),
-        ("java", "Java"),
         ("c", "C"),
         ("cpp", "C++"), ("c++", "C++"),
+        ("h", "C"),
         ("html", "HTML"),
         ("css", "CSS"),
+        ("scss", "SCSS"),
         ("json", "JSON"),
         ("yaml", "YAML"), ("yml", "YAML"),
         ("sql", "SQL"),
-        ("sh", "Shell Script"), ("bash", "Shell Script"), ("shell", "Shell Script"),
+        ("sh", "Shell Script (Bash)"), ("bash", "Shell Script (Bash)"), ("shell", "Shell Script (Bash)"),
         ("md", "Markdown"), ("markdown", "Markdown"),
-        ("rb", "Ruby"), ("ruby", "Ruby"),
-        ("php", "PHP"),
-        ("swift", "Swift"),
-        ("kotlin", "Kotlin"),
-        ("scala", "Scala"),
-        ("dart", "Dart"),
-        ("lua", "Lua"),
-        ("r", "R"),
         ("toml", "TOML"),
-        ("ini", "INI"),
         ("dockerfile", "Dockerfile"), ("docker", "Dockerfile"),
         ("makefile", "Makefile"),
         ("diff", "Diff"),
         ("xml", "XML"),
-        ("graphql", "GraphQL"),
     ];
 
     let lookup = name_map
@@ -114,21 +105,16 @@ pub fn highlight_html_content(html: &str) -> String {
         };
         let pre_end = pre_close + "</pre>".len();
 
-        // Copy everything before this pre block
         result.push_str(&html[search_from..pre_tag]);
 
-        // Extract the opening tag
         let opening_tag = &html[pre_tag..tag_end];
         let lang = extract_lang_attribute(opening_tag);
 
-        // Extract raw text from inner content (strip HTML tags/decode entities)
         let raw_html = &html[tag_end..pre_close];
         let raw_text = decode_and_strip_tags(raw_html);
 
-        // Highlight the code
         let highlighted = highlight_code(&lang, &raw_text);
 
-        // Write the pre block with highlighted content
         result.push_str(opening_tag);
         result.push_str(&highlighted);
         result.push_str("</pre>");
@@ -170,7 +156,7 @@ fn decode_and_strip_tags(html: &str) -> String {
     for c in decoded.chars() {
         match c {
             '<' => in_tag = true,
-            '>' => { in_tag = false; }
+            '>' => in_tag = false,
             _ if !in_tag => out.push(c),
             _ => {}
         }

@@ -1,8 +1,60 @@
-div wrap
-  aside sidebar
-    div sb-top
-      a sidebar-icon href="https://crepuscularity.dev" target="_blank" rel="noopener"
-        svg viewBox="0 0 32 32" fill="none"
+head
+  title "Notes"
+  meta charset="utf-8"
+  meta name="viewport" content="width=device-width, initial-scale=1"
+  link rel="icon" href="./static/favicon.svg" type="image/svg+xml"
+  google-fonts: "Inter", "JetBrains Mono"
+  style
+    @property --cp-bg { syntax: '<color>'; inherits: true; initial-value: #0c0612 }
+    @property --cp-fg { syntax: '<color>'; inherits: true; initial-value: #f4ebff }
+    @property --cp-muted { syntax: '<color>'; inherits: true; initial-value: #9a8ab8 }
+    @property --cp-border { syntax: '<color>'; inherits: true; initial-value: #4c4168 }
+    @property --cp-elevated { syntax: '<color>'; inherits: true; initial-value: #161022 }
+    @property --cp-code { syntax: '<color>'; inherits: true; initial-value: #0a0610 }
+    @property --cp-accent { syntax: '<color>'; inherits: true; initial-value: #ffb070 }
+    :root{--cp-bg:#0c0612;--cp-fg:#f4ebff;--cp-muted:#9a8ab8;--cp-border:#4c4168;--cp-elevated:#161022;--cp-code:#0a0610;--cp-accent:#ffb070;--cp-accent-soft:#e8c4ff}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;overflow:hidden;background:var(--cp-bg);color:var(--cp-fg);font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    ::selection{background:color-mix(in srgb,var(--cp-accent) 30%,transparent)}
+    ::-webkit-scrollbar{width:0;height:0}
+    *{-ms-overflow-style:none;scrollbar-width:none}
+    @keyframes selbar-in{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .note-content h1{font-size:2rem;font-weight:700;margin:1.5rem 0 0.5rem;border-bottom:1px solid var(--cp-border);padding-bottom:0.4rem;line-height:1.25}
+    .note-content h2{font-size:1.5rem;font-weight:700;margin:1.25rem 0 0.4rem;line-height:1.3}
+    .note-content h3{font-size:1.2rem;font-weight:700;margin:1rem 0 0.4rem;line-height:1.3}
+    .note-content p,.note-content div{margin-bottom:0.05rem;min-height:1.45em}
+    .note-content ul,.note-content ol{margin:0.25rem 0 0.25rem 1.5rem;padding-left:1.25rem}
+    .note-content ul{list-style-type:disc}
+    .note-content ol{list-style-type:decimal}
+    .note-content li{margin-bottom:0.1rem;display:list-item}
+    .note-content blockquote{border-left:3px solid var(--cp-accent);padding:0.25rem 0 0.25rem 1rem;margin:0.5rem 0;color:var(--cp-muted);font-style:italic}
+    .note-content hr{border:none;height:1px;margin:1.25rem 0;background:var(--cp-border)}
+    .note-content table{border-collapse:collapse;width:100%;margin:0.75rem 0}
+    .note-content th,.note-content td{border:1px solid var(--cp-border);padding:0.4rem 0.75rem}
+    .note-content th{font-weight:700;background:color-mix(in srgb,var(--cp-bg) 88%,white 12%)}
+    .note-content a{color:var(--cp-accent);text-decoration:underline;text-underline-offset:2px}
+    .note-content code{font-family:"JetBrains Mono",monospace;font-size:0.875em;background:var(--cp-code);padding:0.1rem 0.35rem;border-radius:0.25rem;border:1px solid var(--cp-border)}
+    .note-content pre{position:relative;background:var(--cp-code);border:1px solid var(--cp-border);border-radius:0.5rem;margin:0.55rem 0;overflow:hidden;padding:0.7rem 0.9rem;overflow-x:auto}
+    .note-content pre code{background:0 0;padding:0;border:none;font-size:0.875em;line-height:1.2;white-space:pre}
+    .note-content img{max-width:100%;border-radius:0.5rem;margin:0.5rem 0}
+    .tab--head.active{background:var(--cp-bg)}
+    .tab--head.active::after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--cp-accent)}
+    .tab--btn{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;background:transparent;cursor:pointer;padding:0 0.3rem 0 0.7rem;font-size:0.78rem;color:var(--cp-muted);font-family:"Inter",system-ui,sans-serif;transition:color 0.12s}
+    .tab--head.active .tab--btn{color:var(--cp-fg)}
+    .tab--btn:hover{color:var(--cp-fg)}
+    .tab--close{display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;background:transparent;cursor:pointer;width:1.5rem;color:transparent;transition:color 0.12s,background 0.12s;border-radius:0.2rem;margin:0.25rem 0.2rem;font-size:0.75rem}
+    .tab--head:hover .tab--close,.tab--head.active .tab--close{color:var(--cp-muted)}
+    .tab--close:hover{color:var(--cp-fg)!important;background:color-mix(in srgb,var(--cp-bg) 88%,white 12%)}
+    .tab--new{display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;background:transparent;cursor:pointer;width:2.25rem;color:var(--cp-muted);border-left:1px solid var(--cp-border);transition:color 0.12s,background 0.12s}
+    .tab--new:hover{color:var(--cp-fg);background:color-mix(in srgb,var(--cp-bg) 88%,white 12%)}
+    .editable:empty::before{content:attr(data-placeholder);color:var(--cp-muted);pointer-events:none;font-style:italic;position:absolute;top:3rem;left:2rem}
+
+div flex w-screen h-screen overflow-hidden
+  aside fixed left-0 top-0 h-full w-12 flex flex-col items-center py-2 bg-[var(--cp-elevated)] border-r border-[var(--cp-border)] z-1000 overflow-visible
+    div flex flex-col items-center w-full gap-0.5 px-1.5
+      a flex items-center justify-center rounded-md bg-transparent text-[var(--cp-muted)] cursor-pointer transition hover:bg-white/10 hover:text-[var(--cp-fg)] w-[2.125rem] h-[2.125rem] href="https://crepuscularity.dev" target="_blank" rel="noopener"
+        svg viewBox="0 0 32 32" fill="none" class="w-4 h-4"
           defs
             linearGradient id="b" x1="6" y1="28" x2="26" y2="4"
               stop stop-color="#ffb070"
@@ -10,77 +62,68 @@ div wrap
               stop offset="1" stop-color="#38bdf8"
           circle cx="16" cy="16" r="14" fill="url(#b)" opacity="0.95"
           circle cx="16" cy="16" r="7" fill="#030712" opacity="0.35"
-      .sb-divider
-      button sidebar-icon @click="on_page_new_tab" title="New tab (⌘T)"
-        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      div w-6 h-px bg-[var(--cp-border)] my-1.5 shrink-0
+      button flex items-center justify-center rounded-md bg-transparent text-[var(--cp-muted)] cursor-pointer transition hover:bg-white/10 hover:text-[var(--cp-fg)] w-[2.125rem] h-[2.125rem] @click="on_page_new_tab" title="New tab (⌘T)"
+        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"
           line x1="12" y1="5" x2="12" y2="19"
           line x1="5" y1="12" x2="19" y2="12"
-      button sidebar-icon @click="on_export_md" title="Export markdown"
-        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      button flex items-center justify-center rounded-md bg-transparent text-[var(--cp-muted)] cursor-pointer transition hover:bg-white/10 hover:text-[var(--cp-fg)] w-[2.125rem] h-[2.125rem] @click="on_export_md" title="Export markdown"
+        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"
           path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
           polyline points="17 8 12 3 7 8"
           line x1="12" y1="3" x2="12" y2="15"
-      .sb-divider
-      button sidebar-icon @click="on_toggle_help" title="Help (F1)"
-        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      div w-6 h-px bg-[var(--cp-border)] my-1.5 shrink-0
+      button flex items-center justify-center rounded-md bg-transparent text-[var(--cp-muted)] cursor-pointer transition hover:bg-white/10 hover:text-[var(--cp-fg)] w-[2.125rem] h-[2.125rem] @click="on_toggle_help" title="Help (F1)"
+        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"
           circle cx="12" cy="12" r="10"
           path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
           line x1="12" y1="17" x2="12.01" y2="17"
-    div sidebar-footer
-      span sb-stat id="word-count"
+    div mt-auto flex flex-col items-center gap-0.5 pb-1.5
+      span text-0.5 text-[var(--cp-muted)] font-mono leading-tight text-center id="word-count"
         "0"
-      span sb-stat id="char-count"
+      span text-0.5 text-[var(--cp-muted)] font-mono leading-tight text-center id="char-count"
         "0"
 
-  div editor-area
+  div ml-12 flex-1 h-screen flex flex-col overflow-hidden min-w-0
     embed editor adapter="rust"
 
   if {show_help}
-    div help-panel
-      div help-head
+    div fixed right-0 top-0 z-100001 w-[390px,max(calc(100vw-1rem))] h-screen overflow-auto bg-[var(--cp-elevated)] border-l border-[var(--cp-border)] flex flex-col shadow-2xl
+      div flex items-start justify-between gap-4 p-4 pb-3 border-b border-[var(--cp-border)]
         div
-          h2
+          h2 text-base font-bold leading-tight text-[var(--cp-fg)] m-0
             "Keyboard Shortcuts & Help"
-        button help-close @click="on_toggle_help"
+        button flex items-center justify-center w-7 h-7 shrink-0 rounded-md bg-transparent text-[var(--cp-muted)] cursor-pointer text-base hover:bg-white/10 hover:text-[var(--cp-fg)] @click="on_toggle_help"
           svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"
             line x1="18" y1="6" x2="6" y2="18"
             line x1="6" y1="6" x2="18" y2="18"
-      div help-grid
-        div help-section
-          h3
+      div p-4 overflow-y-auto flex-1
+        div mb-4
+          h3 mb-2 text-xs font-bold text-[var(--cp-muted)] uppercase tracking-wider
             "Tab Management"
-          dl
-            div
-              dt "⌘T"
-              dd "New tab"
-            div
-              dt "⌘W"
-              dd "Close active tab"
-            div
-              dt "F1"
-              dd "Toggle help panel"
-            div
-              dt "⌘K"
-              dd "Search across tabs"
+          dl grid gap-1
+            div grid grid-cols-[minmax(4.8rem,max-content)_1fr] gap-2.5 items-baseline min-w-0
+              dt text-0.7 text-[var(--cp-accent)] whitespace-nowrap font-mono
+                "⌘T"
+              dd min-w-0 text-0.7 leading-snug text-[var(--cp-muted)]
+                "New tab"
+            div grid grid-cols-[minmax(4.8rem,max-content)_1fr] gap-2.5 items-baseline min-w-0
+              dt text-0.7 text-[var(--cp-accent)] whitespace-nowrap font-mono
+                "⌘W"
+              dd min-w-0 text-0.7 leading-snug text-[var(--cp-muted)]
+                "Close active tab"
+            div grid grid-cols-[minmax(4.8rem,max-content)_1fr] gap-2.5 items-baseline min-w-0
+              dt text-0.7 text-[var(--cp-accent)] whitespace-nowrap font-mono
+                "F1"
+              dd min-w-0 text-0.7 leading-snug text-[var(--cp-muted)]
+                "Toggle help panel"
+            div grid grid-cols-[minmax(4.8rem,max-content)_1fr] gap-2.5 items-baseline min-w-0
+              dt text-0.7 text-[var(--cp-accent)] whitespace-nowrap font-mono
+                "⌘K"
+              dd min-w-0 text-0.7 leading-snug text-[var(--cp-muted)]
+                "Search across tabs"
 
   if {show_search}
-    div search-backdrop @click="on_close_search"
-    div search-panel
-      input search-input type="search" id="search-input" placeholder="Search tabs..."
-
-.class-editor { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0 }
-.class-editor .tab-bar { display:flex; align-items:stretch; flex-shrink:0; overflow:hidden; height:2.25rem; background:var(--cp-elevated); border-bottom:1px solid var(--cp-border) }
-.class-editor .tab-list { display:flex; align-items:stretch; overflow-x:auto; flex:1; scrollbar-width:none }
-.class-editor .tab { display:flex; align-items:stretch; flex-shrink:0; position:relative; max-width:180px; min-width:80px; border-right:1px solid var(--cp-border) }
-.class-editor .tab.active { background:var(--cp-bg) }
-.class-editor .tab.active::after { content:""; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--cp-accent) }
-.class-editor .tab-btn { flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:none; background:transparent; cursor:pointer; padding:0 0.3rem 0 0.7rem; font-size:0.78rem; color:var(--cp-muted); font-family:"Inter",system-ui,sans-serif }
-.class-editor .tab.active .tab-btn { color:var(--cp-fg) }
-.class-editor .tab-close { display:flex; align-items:center; justify-content:center; flex-shrink:0; border:none; background:transparent; cursor:pointer; width:1.5rem; color:var(--cp-muted); border-radius:0.2rem; margin:0.25rem 0.2rem; font-size:0.75rem }
-.class-editor .tab-close:hover { color:var(--cp-fg); background:color-mix(in srgb,var(--cp-bg) 88%,white 12%) }
-.class-editor .tab-new { display:flex; align-items:center; justify-content:center; flex-shrink:0; border:none; background:transparent; cursor:pointer; width:2.25rem; color:var(--cp-muted); border-left:1px solid var(--cp-border) }
-.class-editor .tab-new:hover { color:var(--cp-fg); background:color-mix(in srgb,var(--cp-bg) 88%,white 12%) }
-.class-editor .editor-wrap { position:relative; flex:1; min-height:0; overflow-y:auto }
-.class-editor .editor-wrap::-webkit-scrollbar { width:0; height:0 }
-.class-editor .editable { min-height:100%; max-width:48rem; margin:0 auto; padding:3rem 2rem 12rem; font-size:1rem; line-height:1.7; color:var(--cp-fg); caret-color:var(--cp-accent); outline:none; word-wrap:break-word; font-family:"Inter",system-ui,-apple-system,sans-serif }
-.class-editor .editable:empty::before { content:attr(data-placeholder); color:var(--cp-muted); pointer-events:none; font-style:italic; position:absolute; top:3rem; left:2rem }
+    div fixed inset-0 z-100000 bg-black/50 border-none cursor-default @click="on_close_search"
+    div fixed top-[12vh] left-1/2 -translate-x-1/2 w-[560px,min(calc(100vw-2rem))] z-100001 bg-[var(--cp-elevated)] border border-[var(--cp-border)] rounded-lg shadow-lg
+      input type="search" id="search-input" placeholder="Search tabs..." w-full px-4 py-3.5 border-none outline-none bg-[var(--cp-elevated)] text-[var(--cp-fg)] text-base border-b border-[var(--cp-border)]

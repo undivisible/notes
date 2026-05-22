@@ -1,20 +1,19 @@
-div class-editor @keydown="on_keydown"
-  div tab-bar
-    div tab-list
+div flex-1 flex flex-col overflow-hidden min-w-0 @keydown="on_keydown"
+  div flex items-stretch shrink-0 overflow-hidden h-9 bg-[var(--cp-elevated)] border-b border-[var(--cp-border)] sticky top-0 z-20
+    div flex items-stretch overflow-x-auto flex-1
       for tab in {tabs}
-        div tab class:active={active} data-tab-id={id}
-          button tab-btn data-tab-id={id} @click="on_select_tab"
+        div tab--head flex items-stretch shrink-0 relative max-w-[180px] min-w-[80px] border-r border-[var(--cp-border)] class:active={active} data-tab-id={id}
+          button tab--btn data-tab-id={id} @click="on_select_tab"
             "{title}"
-          button tab-close data-tab-id={id} @click="on_close_tab"
+          button tab--close data-tab-id={id} @click="on_close_tab"
             "×"
-    button tab-new @click="on_new_tab"
+    button tab--new @click="on_new_tab"
       svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"
         line x1="12" y1="5" x2="12" y2="19"
         line x1="5" y1="12" x2="19" y2="12"
-  div editor-wrap
-    div editable contenteditable="true" data-placeholder="Start typing..." @input="on_editor_input"
+  div relative flex-1 min-h-0 overflow-y-auto
+    div contenteditable="true" data-placeholder="Start typing..." @input="on_editor_input" min-h-full max-w-[48rem] mx-auto px-8 py-12 pb-48 text-base leading-relaxed text-[var(--cp-fg)] outline-none break-words
       {=active_content}
     if {empty}
-      div style="position:absolute;top:3rem;left:2rem;color:var(--cp-muted);font-style:italic;pointer-events:none"
-        "Start typing... or press Cmd+T for a new tab"
-
+      div absolute top-12 left-8 text-[var(--cp-muted)] italic pointer-events-none
+        "Start typing..."
