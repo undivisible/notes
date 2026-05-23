@@ -1201,6 +1201,25 @@
     placeInEmptyBlock(p);
   }
 
+  function splitDirectEditorText(range) {
+    if (!editorEl || range?.startContainer?.parentElement !== editorEl) {
+      return false;
+    }
+    const textNode = range.startContainer;
+    const beforeText = textNode.textContent.slice(0, range.startOffset);
+    const afterText = textNode.textContent.slice(range.startOffset);
+    const before = document.createElement("p");
+    const after = document.createElement("p");
+    if (beforeText) before.textContent = beforeText;
+    else before.innerHTML = "<br>";
+    if (afterText) after.textContent = afterText;
+    else after.innerHTML = "<br>";
+    textNode.replaceWith(before, after);
+    if (afterText) placeCaretInText(after, 0);
+    else placeInEmptyBlock(after);
+    return true;
+  }
+
   function currentSlashQuery() {
     const sel = window.getSelection();
     if (!sel?.rangeCount || !slashBlock) return null;
@@ -1739,6 +1758,26 @@
 
       if (block) {
         if (block.textContent.trim() === "") {
+          e.preventDefault();
+          const p = emptyParagraph();
+          block.after(p);
+          placeInEmptyBlock(p);
+          syncContent();
+          return;
+        }
+      } else if (
+        startNode?.nodeType === 3 &&
+        startNode.parentElement === editorEl
+      ) {
+        e.preventDefault();
+        splitDirectEditorText(range);
+        syncContent();
+        return;
+      }
+      if (block) {
+        const atEnd =
+          range.startOffset === (startNode?.textContent?.length ?? 0);
+        if (atEnd && block.textContent.trim() !== "") {
           e.preventDefault();
           const p = emptyParagraph();
           block.after(p);

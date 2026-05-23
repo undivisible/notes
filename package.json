@@ -9,12 +9,14 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "lint": "eslint .",
+    "smoke": "playwright test",
     "typecheck": "svelte-check --tsconfig ./jsconfig.json",
-    "test": "bun test && bun run build",
+    "test": "bun test src && bun run build",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.2.4",
     "autoprefixer": "^10.5.0",
