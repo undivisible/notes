@@ -10,7 +10,7 @@
     "format:write": "prettier --write .",
     "lint": "eslint .",
     "typecheck": "svelte-check --tsconfig ./jsconfig.json",
-    "test": "bun run build",
+    "test": "bun test && bun run build",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -20,6 +20,7 @@
     "autoprefixer": "^10.5.0",
     "eslint": "^10.3.0",
     "eslint-plugin-svelte": "^3.17.1",
+    "happy-dom": "^20.9.0",
     "postcss": "^8.5.12",
     "prettier": "^3.8.3",
     "prettier-plugin-svelte": "^3.5.1",

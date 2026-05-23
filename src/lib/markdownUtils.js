@@ -69,7 +69,10 @@ export function markdownToHtml(markdown) {
     },
   );
 
-  const lines = html.split("\n");
+  const lines = /^\n+$/.test(markdown)
+    ? Array.from({ length: markdown.length }, () => "")
+    : html.split("\n");
+  if (!/^\n+$/.test(markdown) && markdown.endsWith("\n")) lines.pop();
   const result = [];
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
@@ -91,7 +94,7 @@ export function markdownToHtml(markdown) {
           );
         result.push(isBlock ? p : "<p>" + p + "</p>");
       } else {
-        result.push("");
+        result.push("<p><br></p>");
       }
     }
   }
@@ -253,7 +256,10 @@ export function htmlToMarkdown(html) {
   if (!html) return "";
   const el = document.createElement("div");
   el.innerHTML = html;
-  return nodeToMd(el).replace(/^\n+|\n+$/g, "");
+  const markdown = nodeToMd(el);
+  return markdown.endsWith("\n") && !markdown.endsWith("\n\n")
+    ? markdown.slice(0, -1)
+    : markdown;
 }
 
 function nodeToMd(node) {
@@ -266,6 +272,7 @@ function nodeToMd(node) {
   const tag = node.tagName.toLowerCase();
   const kids = () => Array.from(node.childNodes).map(nodeToMd).join("");
   const text = () => kids().trim();
+  if (tag === "div" && !node.parentElement) return kids();
 
   switch (tag) {
     case "div":

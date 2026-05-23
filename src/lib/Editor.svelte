@@ -1738,6 +1738,15 @@
       }
 
       if (block) {
+        if (block.textContent.trim() === "") {
+          e.preventDefault();
+          const p = emptyParagraph();
+          block.after(p);
+          placeInEmptyBlock(p);
+          syncContent();
+          return;
+        }
+
         if (isAtStartOfElement(block, range)) {
           e.preventDefault();
           insertEmptyLineBefore(block);
